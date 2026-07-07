@@ -83,6 +83,7 @@ export function BIKE_FOR_CLASS(klass = '50cc', year = 2019) {
     year,
     klass,
     type: 'race_bike',
+    role: 'race', // 'race' | 'practice' | 'spare'
     condition: 72, // 0-100, wears with use
     reliability: 58, // 0-100, chance of a mechanical DNF/mistake
     performance: 40, // 0-100, raw speed potential from setup/parts
@@ -170,10 +171,13 @@ export const ACTIVITIES = [
       g.skill('whoops', g.rng.int(0, 2));
       g.confidence(3);
       g.fatigue(12);
-      g.bikeCondition(-9);
-      g.wearParts(2);
+      // A track day wears whichever bike you practice on (the beater if you own
+      // one) — protecting the race bike (issue #3).
+      const tb = g.trainBike();
+      g.wearBike(tb, { condition: -9, tire: 2 });
       if (g.rng.chance(0.35)) g.skill('raceIQ', 1);
-      return 'You put in motos until the light went flat. Tired, but faster.';
+      const on = tb.role === 'practice' ? ' (on the practice bike)' : '';
+      return `You put in motos until the light went flat${on}. Tired, but faster.`;
     },
   },
   {
@@ -415,10 +419,16 @@ export const MARKET_POOL = [
     floor: 520,
     seller: 'Team liquidation',
     blurb: 'Rough but runs. Save your race bike for race day.',
-    effect: 'Practice no longer wears the race bike as hard',
+    effect: 'A beater to practice on — saves your race bike',
     install(g) {
       g.setFlag('has_practice_bike', true);
-      g.garage.objects.push({ name: 'Practice bike (spare KX65)', memory: 'The beater that saved the good bike.' });
+      const pb = BIKE_FOR_CLASS(g.bike.klass, g.bike.year - 1);
+      pb.name = pb.name + ' (practice)';
+      pb.role = 'practice';
+      pb.condition = 55;
+      pb.reliability = 50;
+      pb.ownership = ['The rough beater bought to save the good bike.'];
+      g.addBike(pb);
     },
   },
   {

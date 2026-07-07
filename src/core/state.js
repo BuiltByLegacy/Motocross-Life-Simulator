@@ -79,6 +79,7 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     bike: BIKE_FOR_CLASS(klass, startYear - 1),
 
     garage: {
+      bikes: [], // additional owned bikes beyond the active race bike (issue #3)
       trophies: [],
       objects: [], // object-memory carrying items (helmets, plates...)
       parts: [], // owned spare parts / gear not yet installed

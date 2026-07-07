@@ -337,6 +337,45 @@ export class Game {
     return entries;
   }
 
+  // ---- multiple bikes (issue #3) ------------------------------------------
+  ownedBikes() {
+    return [this.bike, ...(this.state.garage.bikes ?? [])];
+  }
+  practiceBike() {
+    return (this.state.garage.bikes ?? []).find((b) => b.role === 'practice');
+  }
+  // The bike that takes the wear from a track day: your beater practice bike if
+  // you own one, otherwise the race bike.
+  trainBike() {
+    return this.practiceBike() ?? this.bike;
+  }
+  addBike(bike) {
+    if (!this.state.garage.bikes) this.state.garage.bikes = [];
+    this.state.garage.bikes.push(bike);
+  }
+  // Swap a garaged bike in as the active race bike; the old one goes to storage.
+  setRaceBike(assetId) {
+    const list = this.state.garage.bikes ?? [];
+    const idx = list.findIndex((b) => b.assetId === assetId);
+    if (idx < 0) return false;
+    const incoming = list[idx];
+    const outgoing = this.bike;
+    outgoing.role = 'spare';
+    list.splice(idx, 1);
+    list.push(outgoing);
+    incoming.role = 'race';
+    this.state.bike = incoming;
+    return true;
+  }
+
+  // Apply wear to a specific bike (defaults to the race bike).
+  wearBike(bike, { condition = 0, reliability = 0, tire = 0 } = {}) {
+    const b = bike ?? this.bike;
+    if (condition) b.condition = clamp(b.condition + condition);
+    if (reliability) b.reliability = clamp(b.reliability + reliability);
+    if (tire) b.tireWear = clamp((b.tireWear ?? 0) + tire, 0, 100);
+  }
+
   // Consumable parts wear (issue #3). High tire wear hurts handling on race day.
   wearParts(n) {
     this.bike.tireWear = clamp((this.bike.tireWear ?? 0) + n, 0, 100);
@@ -570,6 +609,8 @@ export class Game {
     // Moving up a class: the outgrown bike becomes a keepsake, a new one arrives.
     if (newClass !== this.rider.klass) {
       const old = this.bike;
+      old.role = 'spare';
+      this.addBike(old); // keep the outgrown bike in the garage (issue #3)
       this.garage.objects.push({
         name: `${old.name} (first ${old.klass})`,
         memory: `Your ${old.klass} from ${old.year}. Outgrown, never forgotten.`,

@@ -925,6 +925,19 @@ export class App {
           ...b.memories.slice(-4).map((m) => el('div', { class: 'small muted' }, `• ${m.text}`)),
         ) : null,
       ),
+      g.state.garage.bikes.length ? el('div', { class: 'card' },
+        el('h3', {}, '🏍️ Your Bikes'),
+        ...g.ownedBikes().map((bk) => {
+          const roleLabel = bk.role === 'race' ? '🏁 Race bike' : bk.role === 'practice' ? '🔧 Practice bike' : '📦 Spare';
+          return el('div', { class: 'bike-row' + (bk.role === 'race' ? ' race' : '') },
+            el('div', { class: 'bike-info' },
+              el('div', {}, el('b', {}, bk.name), ' ', el('span', { class: 'faint small' }, roleLabel)),
+              el('div', { class: 'small faint' }, `${bk.klass} · cond ${bk.condition} · rel ${bk.reliability} · tire wear ${bk.tireWear ?? 0}%`),
+            ),
+            bk.role !== 'race' ? el('button', { class: 'btn small', onclick: () => { g.setRaceBike(bk.assetId); this._flash(`${bk.name} is now your race bike.`); this.render(); } }, 'Make race bike') : el('span', { class: 'faint small' }, 'Active'),
+          );
+        }),
+      ) : null,
       el('div', { class: 'card' },
         el('h3', {}, '🏆 Trophy Shelf'),
         g.garage.trophies.length
