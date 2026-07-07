@@ -109,6 +109,7 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
 
     // ---- multi-week / multi-season / campaign scaffolding ----
     campaign: 'rider', // 'rider' | 'parent' (DD-0012)
+    schoolMode: 'school', // 'school' | 'homeschool' (issue #5)
     seasonNumber: 1,
     startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
     _preparedWeek: 0, // guards once-per-week setup across save/load

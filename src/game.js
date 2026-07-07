@@ -47,10 +47,11 @@ export const SIM_DEPTHS = {
 };
 
 export class Game {
-  constructor({ riderName = 'Riley', seed = Date.now(), depth = 'detailed', birthdate = '2022-05-15', campaign = 'rider' } = {}) {
+  constructor({ riderName = 'Riley', seed = Date.now(), depth = 'detailed', birthdate = '2022-05-15', campaign = 'rider', schoolMode = 'school' } = {}) {
     this.state = createInitialState(riderName, seed, birthdate, campaign);
     this.state.simDepth = depth;
     this.state.campaign = campaign;
+    this.state.schoolMode = schoolMode;
     this.rng = new RNG(seed);
     this.bus = new EventBus();
 
@@ -231,6 +232,60 @@ export class Game {
     return this.activitySet().find((a) => a.id === id);
   }
 
+  // ---- 7-day week board (issue #5) ----------------------------------------
+  // Which weekdays the kid has after-school energy for — grows with age.
+  _afterSchoolDays() {
+    const age = this.rider.age;
+    if (age <= 9) return ['mon', 'wed'];
+    if (age <= 13) return ['mon', 'wed', 'fri'];
+    return ['mon', 'tue', 'wed', 'thu'];
+  }
+
+  // Build the 7 day-cards with their assignable slots, based on age, schooling,
+  // and whether it's a race weekend. A 'full' slot accepts a full-day activity
+  // (a track day) or a light one; a 'light' slot accepts only light activities.
+  weekBoard() {
+    const age = this.rider.age;
+    const homeschool = this.state.schoolMode === 'homeschool';
+    const raceWeek = this.isRaceWeek();
+    const afterSchool = new Set(this._afterSchoolDays());
+    const weekdays = [
+      ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'],
+    ];
+    const days = [];
+
+    for (const [key, label] of weekdays) {
+      if (age <= 5) {
+        days.push({ key, label, kind: 'preschool', daytime: 'Preschool', slots: [] });
+      } else if (homeschool) {
+        // Homeschool frees the day; you can ride, but must fit schoolwork in.
+        const slots = afterSchool.has(key) ? [{ id: key + '-1', type: 'full' }] : [{ id: key + '-1', type: 'light' }];
+        days.push({ key, label, kind: 'home', daytime: 'Homeschool', slots });
+      } else {
+        const slots = afterSchool.has(key) ? [{ id: key + '-1', type: 'light', afterSchool: true }] : [];
+        days.push({ key, label, kind: 'school', daytime: 'School', slots });
+      }
+    }
+
+    for (const [key, label] of [['sat', 'Sat'], ['sun', 'Sun']]) {
+      if (raceWeek) {
+        days.push({ key, label, kind: 'race', daytime: 'RACE', slots: [] });
+      } else {
+        days.push({ key, label, kind: 'weekend', daytime: null, slots: [{ id: key + '-1', type: 'full' }] });
+      }
+    }
+    return days;
+  }
+
+  weekSlots() {
+    return this.weekBoard().flatMap((d) => d.slots.map((s) => ({ ...s, day: d.key })));
+  }
+  slotAccepts(slot, activity) {
+    if (!activity) return true;
+    if (slot.type === 'full') return true; // a full day can hold anything
+    return (activity.block ?? 'light') === 'light'; // a light slot: light only
+  }
+
   // Heuristic auto-planner for simulated weeks (DD-0020).
   autoPlan() {
     const slots = this.planningSlots();
@@ -249,36 +304,67 @@ export class Game {
       }
       return picks.slice(0, slots);
     }
-    if (this.bike.condition < 55 || this.bike.reliability < 55) need.push('wrench');
-    if (this.rider.fatigue > 55) need.push('rest');
-    if (!this.flag('grades_good') && this.rng.chance(0.4)) need.push('school');
-    if (this.family.money < 250) need.push('odd_jobs');
-    const defaults = this.isRaceWeek() ? ['wrench', 'fitness', 'rest'] : ['practice', 'fitness', 'wrench', 'family'];
-    for (const id of [...need, ...defaults]) {
-      if (picks.length >= slots) break;
-      if (!picks.includes(id)) picks.push(id);
-    }
-    return picks.slice(0, slots);
+    // Rider mode: fill the 7-day board — full slots get track days, light slots
+    // get the most-needed light activity.
+    return this._autoPlanBoard();
   }
 
-  runSchedule(activityIds) {
-    const results = [];
-    for (const id of activityIds) {
-      const act = this.activityById(id);
-      if (!act) continue;
-      if (act.cost) {
-        const cost = id === 'wrench' && this.family.support_level >= 1 ? 0 : act.cost;
-        if (cost > 0 && !this.spend(cost)) {
-          this.stress(4);
-          results.push({ name: act.name, icon: act.icon, outcome: `Money was too tight — Dad covered the $${cost}, and felt it.` });
-          // still run the activity; the family made it work
-        }
+  _autoPlanBoard() {
+    const slotsList = this.weekSlots();
+    const entries = [];
+    let didSchool = false;
+    const lightNeed = () => {
+      if (this.bike.condition < 55 || this.bike.reliability < 55) return 'wrench';
+      if (!this.flag('grades_good') && !didSchool) { didSchool = true; return 'schoolwork'; }
+      if (this.family.money < 200) return 'earn';
+      if (this.rider.fatigue > 55) return 'rest';
+      return this.rng.pick(['fitness', 'general_training', 'wrench', 'earn']);
+    };
+    for (const slot of slotsList) {
+      if (slot.type === 'full') {
+        entries.push(this.isRaceWeek() ? 'wrench' : 'practice');
+      } else {
+        const id = lightNeed();
+        entries.push(id === 'schoolwork' ? 'schoolwork' : id);
       }
-      const outcome = act.run(this);
-      results.push({ name: act.name, icon: act.icon, outcome });
-      this.log(`${act.icon} ${act.name}: ${outcome}`);
     }
-    this.state.schedule = activityIds;
+    // Guarantee some schoolwork for school-age kids.
+    if (this.rider.age >= 6 && !entries.includes('schoolwork') && entries.length) entries[entries.length - 1] = 'schoolwork';
+    return entries;
+  }
+
+  // Consumable parts wear (issue #3). High tire wear hurts handling on race day.
+  wearParts(n) {
+    this.bike.tireWear = clamp((this.bike.tireWear ?? 0) + n, 0, 100);
+  }
+
+  _activityCost(act) {
+    let cost = act.cost ?? 0;
+    if (act.id === 'wrench' && this.family.support_level >= 1) cost = 0;
+    else if (act.id === 'wrench' && this.flag('parts_discount')) cost = Math.round(cost * 0.5);
+    return cost;
+  }
+
+  // Accepts entries that are either an activity id string or { id, stat } for
+  // focused training. Returns per-activity outcome cards.
+  runSchedule(entries) {
+    const results = [];
+    const norm = (entries ?? []).map((e) => (typeof e === 'string' ? { id: e } : e));
+    for (const entry of norm) {
+      const act = this.activityById(entry.id);
+      if (!act) continue;
+      const cost = this._activityCost(act);
+      if (cost > 0 && !this.spend(cost)) {
+        this.stress(4);
+        results.push({ name: act.name, icon: act.icon, outcome: `Money was too tight — the family covered the $${cost}, and felt it.` });
+      }
+      const outcome = act.run(this, entry);
+      const label = act.dynamicLabel ? act.dynamicLabel(this) : act.name;
+      const icon = act.dynamicIcon ? act.dynamicIcon(this) : act.icon;
+      results.push({ name: label, icon, outcome });
+      this.log(`${icon} ${label}: ${outcome}`);
+    }
+    this.state.schedule = norm;
     return results;
   }
 
@@ -322,6 +408,7 @@ export class Game {
     // Physical toll & confidence swing.
     this.fatigue(26);
     this.bikeCondition(-15);
+    this.wearParts(5); // a race weekend eats into the tires (issue #3)
     const overall = result.overall;
     if (result.dnf) this.confidence(-8);
     else if (overall <= 3) this.confidence(11);
@@ -527,6 +614,15 @@ export class Game {
     // Natural weekly recovery so fatigue doesn't spiral.
     this.fatigue(-6);
     this.stress(-2);
+    // Schoolwork quota (issue #5): school-age kids who never hit the books this
+    // week let their grades slip — and Mom notices.
+    if (!this.isParent && this.rider.age >= 6 && !this.flag('did_schoolwork')) {
+      this.setFlag('grades_good', false);
+      this.rel('mom').change('fear', 3);
+      this.rel('mom').change('trust', -2);
+      this.log('📉 No schoolwork this week — grades slipped and Mom noticed.');
+    }
+    this.setFlag('did_schoolwork', false);
     if (this._weekLog) this.state.logbook.push(this._weekLog);
     this.state.week += 1;
     this.state.schedule = [];

@@ -77,6 +77,7 @@ export class App {
     let name = 'Riley';
     let depth = 'detailed';
     let campaign = 'rider';
+    let schoolMode = 'school';
     const thisYear = new Date().getFullYear();
     let birthdate = `${thisYear - 4}-05-15`; // default: rider turns 4 this year
 
@@ -168,19 +169,32 @@ export class App {
           el('div', { style: 'margin-top:6px' }, ageHint),
         ),
         el('div', { class: 'field' },
+          el('label', {}, 'Schooling'),
+          el('div', { class: 'depth-grid' },
+            ...[['school', '🏫 Public school', 'Ride on weekends; lighter training after school.'],
+                ['homeschool', '🏠 Homeschool', 'More weekday ride time — but keep the schoolwork up.']].map(([k, lab, blurb]) =>
+              el('div', {
+                class: 'depth-card' + (k === schoolMode ? ' selected' : ''),
+                'data-school': k,
+                onclick: () => { schoolMode = k; this.root.querySelectorAll('[data-school]').forEach((e2) => e2.classList.toggle('selected', e2.dataset.school === schoolMode)); },
+              }, el('b', {}, lab), el('div', { class: 'small muted' }, blurb))
+            ),
+          ),
+        ),
+        el('div', { class: 'field' },
           el('label', {}, 'Simulation depth — how much do you want to live yourself?'),
           el('div', { class: 'depth-grid' }, ...depthCards),
         ),
-        el('button', { class: 'btn primary wide', onclick: () => this.startGame({ name, depth, birthdate, campaign }) }, `Begin — ${thisYear} Season`),
+        el('button', { class: 'btn primary wide', onclick: () => this.startGame({ name, depth, birthdate, campaign, schoolMode }) }, `Begin — ${thisYear} Season`),
       ),
       el('p', { class: 'faint small center' }, 'Prototype v0.1 · Legacy Studios · Build memories, not mechanics.'),
     );
     this.root.replaceChildren(view);
   }
 
-  startGame({ name, depth, birthdate, campaign }) {
+  startGame({ name, depth, birthdate, campaign, schoolMode }) {
     this.clearSave(); // a fresh life replaces any prior save
-    this.game = new Game({ riderName: name, depth, birthdate, campaign, seed: Date.now() });
+    this.game = new Game({ riderName: name, depth, birthdate, campaign, schoolMode, seed: Date.now() });
     this.tab = 'week';
     this.startWeek();
   }
@@ -268,6 +282,7 @@ export class App {
   renderTabs() {
     const tabs = [
       ['week', '📅', 'Week'],
+      ['stats', '📊', 'Stats'],
       ['garage', '🏠', 'Garage'],
       ['market', '📱', 'Market'],
       ['people', '👥', 'People'],
@@ -288,6 +303,7 @@ export class App {
 
   renderTab() {
     switch (this.tab) {
+      case 'stats': return this.renderStatsTab();
       case 'garage': return this.renderGarage();
       case 'market': return this.renderMarket();
       case 'people': return this.renderPeople();
@@ -319,10 +335,25 @@ export class App {
       const results = g.runSchedule(picks);
       this.digest.push({ type: 'plan', results, auto: true });
       this.handleScenario();
-    } else {
+    } else if (g.isParent) {
       this.plannerSel = [];
       this.showWeek(() => this.viewPlanner());
+    } else {
+      this.boardSel = {};
+      this._pickingSlot = null;
+      this._pickingStat = null;
+      this.showWeek(() => this.viewWeekBoard());
     }
+  }
+
+  submitBoard() {
+    const g = this.game;
+    // Preserve slot order from the board so effects resolve day-by-day.
+    const order = g.weekSlots().map((s) => s.id);
+    const entries = order.filter((id) => this.boardSel[id]).map((id) => this.boardSel[id]);
+    const results = g.runSchedule(entries);
+    this.digest.push({ type: 'plan', results, auto: false });
+    this.handleScenario();
   }
 
   submitPlan() {
@@ -430,6 +461,109 @@ export class App {
             meta.race ? 'Lock in prep →' : 'Live the week →'),
         ),
       ),
+    );
+  }
+
+  // ---- 7-day week board (issue #5) ----------------------------------------
+  viewWeekBoard() {
+    const g = this.game;
+    const meta = g.meta();
+    const board = g.weekBoard();
+    const homeschool = g.state.schoolMode === 'homeschool';
+    const assignedCount = Object.keys(this.boardSel).filter((k) => this.boardSel[k]).length;
+
+    const dayCard = (d) => {
+      const kindBadge = {
+        school: '🏫 School', home: '🏠 Homeschool', preschool: '🧸 Preschool', race: '🏁 RACE', weekend: '☀️ Weekend',
+      }[d.kind];
+      const slotEls = d.slots.length
+        ? d.slots.map((s) => this.slotEl(s, d))
+        : [el('div', { class: 'slot empty-day' }, d.kind === 'race' ? 'Race day' : d.kind === 'preschool' ? 'Too little to train' : 'No time today')];
+      return el('div', { class: 'day-card ' + d.kind },
+        el('div', { class: 'day-head' }, el('b', {}, d.label), el('span', { class: 'day-kind' }, kindBadge)),
+        ...slotEls,
+      );
+    };
+
+    return el('div', {},
+      el('div', { class: 'card' },
+        el('div', { class: 'eyebrow' }, meta.race ? '🏁 Race Week' : `${g.seasonYear} · Week ${g.week}`),
+        el('h2', {}, meta.title),
+        el('p', { class: 'muted small' }, meta.race
+          ? `${meta.race.name} is this weekend. Fill the week to get ready.`
+          : (meta.note ?? 'Plan the week. Track days take a full weekend day; evenings are for lighter work.')),
+        el('p', { class: 'small faint' }, homeschool
+          ? 'Homeschooled: you can ride some weekdays — but still fit schoolwork in, or grades slip.'
+          : (g.rider.age <= 5 ? 'Too little for a real program yet — mostly weekend yard laps.'
+            : 'In school on weekdays: ride on weekends, train lighter after school.')),
+        el('div', { class: 'week-grid' }, ...board.map(dayCard)),
+        this._pickingSlot ? this.slotPicker() : null,
+        el('div', { class: 'toolbar', style: 'margin-top:12px' },
+          el('button', { class: 'btn primary', onclick: () => this.submitBoard() },
+            assignedCount ? `Live the week (${assignedCount} planned) →` : 'Skip the week →'),
+        ),
+      ),
+    );
+  }
+
+  slotEl(slot, day) {
+    const g = this.game;
+    const entry = this.boardSel[slot.id];
+    if (entry) {
+      const act = g.activityById(entry.id);
+      const label = act.dynamicLabel ? act.dynamicLabel(g) : act.name;
+      const icon = act.dynamicIcon ? act.dynamicIcon(g) : act.icon;
+      return el('div', { class: 'slot filled', onclick: () => { delete this.boardSel[slot.id]; this.render(); } },
+        el('span', {}, icon + ' '),
+        el('span', { class: 'slot-name' }, entry.stat ? `${label}: ${entry.stat}` : label),
+        el('span', { class: 'slot-x' }, '×'),
+      );
+    }
+    const isFull = slot.type === 'full';
+    return el('div', { class: 'slot open' + (this._pickingSlot === slot.id ? ' picking' : ''), onclick: () => { this._pickingSlot = slot.id; this._pickingStat = null; this.render(); } },
+      el('span', { class: 'slot-plus' }, '＋'),
+      el('span', { class: 'faint small' }, isFull ? 'Full day' : 'Evening'),
+    );
+  }
+
+  slotPicker() {
+    const g = this.game;
+    const slot = g.weekSlots().find((s) => s.id === this._pickingSlot);
+    if (!slot) return null;
+
+    // Stage 2: pick a stat for focused training.
+    if (this._pickingStat) {
+      const stats = ['starts', 'cornering', 'jumping', 'whoops', 'raceIQ', 'consistency', 'fitness'];
+      return el('div', { class: 'picker' },
+        el('div', { class: 'picker-head' }, 'Focused training — pick a skill'),
+        el('div', { class: 'picker-list' },
+          ...stats.map((st) =>
+            el('button', { class: 'btn small', onclick: () => { this.boardSel[slot.id] = { id: 'focused_training', stat: st }; this._pickingSlot = null; this._pickingStat = null; this.render(); } },
+              `${st} (${g.rider.skills[st]})`)
+          ),
+        ),
+        el('button', { class: 'btn ghost small', onclick: () => { this._pickingStat = null; this.render(); } }, '‹ Back'),
+      );
+    }
+
+    const options = g.availableActivities().filter((a) => g.slotAccepts(slot, a));
+    return el('div', { class: 'picker' },
+      el('div', { class: 'picker-head' }, slot.type === 'full' ? 'Full day — pick an activity' : 'Evening — pick a light activity'),
+      el('div', { class: 'picker-list' },
+        ...options.map((a) => {
+          const cost = g._activityCost(a);
+          const label = a.dynamicLabel ? a.dynamicLabel(g) : a.name;
+          const icon = a.dynamicIcon ? a.dynamicIcon(g) : a.icon;
+          return el('button', { class: 'btn small picker-opt', onclick: () => {
+            if (a.needsStat) { this._pickingStat = true; this.render(); return; }
+            this.boardSel[slot.id] = { id: a.id }; this._pickingSlot = null; this.render();
+          } },
+            el('span', {}, `${icon} ${label}`),
+            cost ? el('span', { class: 'pick-cost' }, '$' + cost) : null,
+          );
+        }),
+      ),
+      el('button', { class: 'btn ghost small', onclick: () => { this._pickingSlot = null; this.render(); } }, 'Cancel'),
     );
   }
 
@@ -682,6 +816,48 @@ export class App {
   }
 
   // ---- Standing tabs -------------------------------------------------------
+  renderStatsTab() {
+    const g = this.game;
+    const s = g.rider.skills;
+    const rows = [
+      ['starts', 'Starts', 'Off the gate — the holeshot'],
+      ['cornering', 'Cornering', 'Ruts, berms, flat turns'],
+      ['jumping', 'Jumping', 'Doubles, tables, rhythm'],
+      ['whoops', 'Whoops', 'The dreaded whoop section'],
+      ['raceIQ', 'Race IQ', 'Lines, passing, race craft'],
+      ['consistency', 'Consistency', 'Lap-to-lap, no mistakes'],
+      ['fitness', 'Fitness', 'Holding on late in the moto'],
+    ];
+    const overall = Math.round(rows.reduce((a, [k]) => a + s[k], 0) / rows.length);
+    const who = g.isParent ? `${g.rider.name}'s` : 'Your';
+    return el('div', {},
+      el('div', { class: 'card' },
+        el('div', { class: 'eyebrow' }, 'Rider Skills' ),
+        el('h2', {}, `${who} Riding — overall ${overall}`),
+        el('p', { class: 'small faint' }, `${g.rider.name}, age ${g.rider.age} · ${g.rider.klass}. Skills grow through practice and training.`),
+        ...rows.map(([k, label, desc]) =>
+          el('div', { class: 'skill-row' },
+            el('div', { class: 'skill-top' }, el('b', {}, label), el('span', { class: 'mono' }, s[k])),
+            this.meter(s[k], s[k]),
+            el('div', { class: 'faint small' }, desc),
+          )
+        ),
+      ),
+      el('div', { class: 'card' },
+        el('h3', {}, '🎯 Training'),
+        el('p', { class: 'small muted' }, g.isParent
+          ? 'Book track days and coaching in the weekly plan to build these up.'
+          : 'Build these in the weekly plan:'),
+        el('div', { class: 'small' },
+          el('p', {}, '🏍️ ', el('b', {}, 'Track day'), ' — a full weekend day; builds cornering, jumping, whoops.'),
+          el('p', {}, '🎯 ', el('b', {}, 'General training'), ' — a little across all skills.'),
+          el('p', {}, '🔬 ', el('b', {}, 'Focused training'), ' — drill one skill you choose, harder.'),
+          el('p', {}, '💪 ', el('b', {}, 'Fitness'), ' — the difference on lap five.'),
+        ),
+      ),
+    );
+  }
+
   renderGarage() {
     const g = this.game;
     const b = g.bike;
@@ -690,6 +866,7 @@ export class App {
         el('div', { class: 'eyebrow' }, 'The Garage — home, workshop, museum'),
         el('h2', {}, b.name),
         el('p', { class: 'small faint' }, `#${b.serial} · Condition ${b.condition} · Reliability ${b.reliability} · Handling ${b.handling} · Performance ${b.performance}`),
+        el('p', { class: 'small' }, `🛞 Tire wear: `, el('b', { style: (b.tireWear ?? 0) > 60 ? 'color:var(--red)' : 'color:var(--ink)' }, `${b.tireWear ?? 0}%`), (b.tireWear ?? 0) > 60 ? el('span', { class: 'faint' }, ' — worn; grip is going. Buy fresh tires.') : null),
         b.installed.length ? el('p', { class: 'small' }, '🔩 Installed: ' + b.installed.join(', ')) : el('p', { class: 'small faint' }, 'Bone stock, for now.'),
         b.memories.length ? el('div', {},
           el('div', { class: 'small faint', style: 'margin-top:8px' }, 'This bike remembers:'),

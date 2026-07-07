@@ -88,6 +88,7 @@ export function BIKE_FOR_CLASS(klass = '50cc', year = 2019) {
     performance: 40, // 0-100, raw speed potential from setup/parts
     handling: 42, // cornering/suspension quality
     starts: 40, // gate/holeshot hardware
+    tireWear: 0, // 0-100, consumable wear (issue #3); high wear hurts handling
     installed: [], // installed parts by name
     ownership: ['Bought used from a family two towns over'],
     maintenance: [],
@@ -140,16 +141,28 @@ export const CALENDAR = [
 ];
 
 // ---------------------------------------------------------------------------
-// Weekly activities. The planner gives 2 slots on a normal week, 1 on a race
-// week (the rest of the weekend is the race). Effects mutate the world through
-// the game helper API.
+// Weekly activities (Rider mode). Each is tagged with a `block`:
+//   'full'  — takes a whole day (only weekends, or homeschool weekdays)
+//   'light' — an after-school / evening slot
+// The 7-day week board (issue #5) places these into days based on the kid's age
+// and schooling. Age-based income (issue #7) and training (issue #8) live here.
 // ---------------------------------------------------------------------------
+
+// How a young rider earns money, scaling with age (issue #7).
+export function INCOME_FOR_AGE(age) {
+  if (age <= 7) return { label: 'Do chores for allowance', icon: '🧹', min: 5, max: 15, note: 'Chores around the house for a few dollars.' };
+  if (age <= 11) return { label: 'Mow lawns / paper route', icon: '📰', min: 20, max: 45, note: 'A paper route and a push mower. Real work, real money.' };
+  if (age <= 15) return { label: 'Odd jobs for cash', icon: '💵', min: 45, max: 80, note: 'Detailing trucks, washing bikes at the track.' };
+  return { label: 'Work your part-time job', icon: '🛠️', min: 90, max: 150, note: 'A real paycheck now — and a parts-counter discount.' };
+}
+
 export const ACTIVITIES = [
   {
     id: 'practice',
-    name: 'Practice at the local track',
+    name: 'Track day (practice)',
     icon: '🏍️',
-    desc: 'Laps build cornering, jumping and confidence — but wear the bike and legs.',
+    block: 'full',
+    desc: 'A full day of motos. Builds cornering, jumping and confidence — wears the bike and legs.',
     cost: 40,
     run(g) {
       g.skill('cornering', g.rng.int(1, 3));
@@ -158,6 +171,7 @@ export const ACTIVITIES = [
       g.confidence(3);
       g.fatigue(12);
       g.bikeCondition(-9);
+      g.wearParts(2);
       if (g.rng.chance(0.35)) g.skill('raceIQ', 1);
       return 'You put in motos until the light went flat. Tired, but faster.';
     },
@@ -166,90 +180,128 @@ export const ACTIVITIES = [
     id: 'fitness',
     name: 'Train fitness',
     icon: '💪',
+    block: 'light',
     desc: 'Cardio and strength. Fitness fades late-race fatigue.',
     run(g) {
       g.skill('fitness', g.rng.int(2, 4));
-      g.fatigue(8);
+      g.fatigue(6);
       g.confidence(1);
       return 'Bike sprints and the gym. Your legs will thank you on lap five.';
+    },
+  },
+  {
+    id: 'general_training',
+    name: 'General training',
+    icon: '🎯',
+    block: 'light',
+    desc: 'A balanced session — a little of everything across your riding skills.',
+    run(g) {
+      for (const s of ['starts', 'cornering', 'jumping', 'whoops', 'consistency']) {
+        if (g.rng.chance(0.6)) g.skill(s, 1);
+      }
+      g.fatigue(5);
+      return 'A bit of starts, a bit of corners, a bit of everything. Steady gains.';
+    },
+  },
+  {
+    id: 'focused_training',
+    name: 'Focused training',
+    icon: '🔬',
+    block: 'light',
+    needsStat: true,
+    desc: 'Drill one specific skill hard. You choose which.',
+    run(g, opts = {}) {
+      const stat = opts.stat && g.rider.skills[opts.stat] !== undefined ? opts.stat : 'starts';
+      g.skill(stat, g.rng.int(2, 4));
+      g.fatigue(6);
+      const names = { starts: 'starts off the gate', cornering: 'cornering and ruts', jumping: 'jumps and doubles', whoops: 'the whoops section', raceIQ: 'race craft and lines', consistency: 'lap-to-lap consistency', fitness: 'fitness' };
+      return `You drilled ${names[stat] ?? stat} until it clicked.`;
     },
   },
   {
     id: 'wrench',
     name: 'Wrench on the bike',
     icon: '🔧',
-    desc: 'Fresh oil, clean air filter, checked bolts. Restores condition & reliability.',
+    block: 'light',
+    desc: 'Fresh oil, clean filter, checked bolts. Restores condition & reliability.',
     cost: 30,
     run(g) {
-      g.bikeCondition(g.rng.int(18, 28));
-      g.bikeReliability(g.rng.int(3, 7));
-      g.rel('dad').change('trust', 2);
-      if (g.rng.chance(0.4)) {
+      g.bikeCondition(g.rng.int(16, 24));
+      g.bikeReliability(g.rng.int(3, 6));
+      g.rel('dad').change('trust', 1);
+      if (g.rng.chance(0.35)) {
         g.skill('raceIQ', 1);
         g.rel('dad').change('pride', 1);
       }
       g.bikeMemoryMaybe('Another night in the garage with a wrench in hand.');
-      return 'The KX65 is clean, tight, and ready. Dad nodded at the work.';
+      return 'The bike is clean, tight, and ready. Dad nodded at the work.';
+    },
+  },
+  {
+    id: 'schoolwork',
+    name: 'Schoolwork',
+    icon: '📚',
+    block: 'light',
+    desc: "Homework and study. Keeps the grades up — and Mom off the racing.",
+    run(g) {
+      g.rel('mom').change('trust', 3);
+      g.rel('mom').change('fear', -2);
+      g.setFlag('grades_good', true);
+      g.setFlag('did_schoolwork', true);
+      return 'Homework done, teacher happy. Mom relaxed about the racing.';
     },
   },
   {
     id: 'family',
     name: 'Family time',
     icon: '🏡',
-    desc: 'A normal day off. Lowers stress, builds trust, resets your head.',
+    block: 'light',
+    desc: 'A normal evening off. Lowers stress, builds trust.',
     run(g) {
-      g.stress(-10);
-      g.confidence(2);
+      g.stress(-8);
+      g.confidence(1);
       g.rel('mom').change('trust', 2);
-      g.rel('mom').change('fear', -2);
+      g.rel('mom').change('fear', -1);
       g.rel('dad').change('support', 1);
       return 'Burgers, a movie, no bikes. Everyone breathed a little easier.';
-    },
-  },
-  {
-    id: 'school',
-    name: 'Focus on school',
-    icon: '📚',
-    desc: "Keep the grades up. Mom's approval is a currency of its own.",
-    run(g) {
-      g.rel('mom').change('trust', 4);
-      g.rel('mom').change('fear', -2);
-      g.setFlag('grades_good', true);
-      return 'Homework done, teacher happy. Mom relaxed about the racing.';
     },
   },
   {
     id: 'rest',
     name: 'Rest & recover',
     icon: '😴',
+    block: 'light',
     desc: 'Do nothing on purpose. Sheds fatigue, steadies confidence.',
     run(g) {
-      g.fatigue(-22);
-      g.confidence(2);
-      if (g.rider.injury) {
-        g.rider.injury.weeksOut = Math.max(0, g.rider.injury.weeksOut - 1);
-      }
-      return 'A quiet weekend. Bodies heal in the boring weeks.';
+      g.fatigue(-16);
+      g.confidence(1);
+      if (g.rider.injury) g.rider.injury.weeksOut = Math.max(0, g.rider.injury.weeksOut - 1);
+      return 'A quiet evening. Bodies heal in the boring hours.';
     },
   },
   {
-    id: 'odd_jobs',
-    name: 'Odd jobs for cash',
+    id: 'earn',
+    name: 'Earn money',
     icon: '💵',
-    desc: 'Mow lawns, wash bikes at the shop. You earn your own money.',
+    block: 'light',
+    desc: 'Earn your own money — how depends on your age.',
+    dynamicLabel: (g) => INCOME_FOR_AGE(g.rider.age).label,
+    dynamicIcon: (g) => INCOME_FOR_AGE(g.rider.age).icon,
     run(g) {
-      const earned = g.rng.int(90, 150);
+      const inc = INCOME_FOR_AGE(g.rider.age);
+      const earned = g.rng.int(inc.min, inc.max);
       g.addMoney(earned);
-      g.fatigue(6);
-      g.rel('shop_rocky').change('loyalty', 2);
+      g.fatigue(4);
       g.setFlag('earned_own_money', true);
-      return `You earned $${earned} of your own. It buys parts — and pride.`;
+      if (g.rider.age >= 16) g.setFlag('parts_discount', true);
+      return `${inc.note} You earned $${earned} of your own.`;
     },
   },
   {
     id: 'market',
     name: 'Browse the marketplace',
     icon: '📱',
+    block: 'light',
     desc: 'See what the local motocross community is selling this week.',
     run(g) {
       g.market.refresh(true);
@@ -271,10 +323,12 @@ export const MARKET_POOL = [
     floor: 65,
     seller: 'Honest racing dad',
     blurb: 'Barely a moto on them. Kid moved up a class.',
-    effect: 'Handling +6, condition +8',
+    effect: 'Fresh tires: handling +6, wear reset',
     install(g) {
       g.bike.handling += 6;
-      g.bikeCondition(8);
+      g.bike.tireWear = 0; // brand-new rubber (issue #3)
+      g.bikeCondition(4);
+      g.bike.installed = g.bike.installed.filter((n) => n !== 'Dunlop MX33 tires');
       g.bike.installed.push('Dunlop MX33 tires');
     },
   },

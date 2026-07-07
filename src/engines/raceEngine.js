@@ -28,6 +28,8 @@ function playerBaseRating(g) {
   if (g.rider.injury && g.rider.injury.weeksOut > 0) rating -= 8;
   if (g.flag('mud_ready')) rating += 4; // prepped for the conditions
   if (g.flag('pit_help')) rating += 4; // paid pit support (Parent mode)
+  const tw = g.bike.tireWear ?? 0;
+  if (tw > 50) rating -= Math.min(6, (tw - 50) * 0.12); // worn tires hurt grip (issue #3)
   return rating;
 }
 
