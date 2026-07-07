@@ -7,8 +7,9 @@ racing game — it's a game about *living* a motocross life: the late-night engi
 rebuilds, the family sacrifices, the rivals, the first podium, and the memories
 that outlast the results.
 
-This repo contains **playable prototype v0.1**: one emotionally complete
-**12-week youth season** (a 9-year-old on a 65cc), plus the full design bible
+This repo contains **playable prototype v0.2**: a saveable, multi-season youth
+motocross career that can start as early as age 4 on a 50cc and grow through
+class progression, plus the full design bible
 that defines the larger game.
 
 **Studio motto:** Build memories, not mechanics.
@@ -72,6 +73,19 @@ The same life, at the granularity **you** want (design decision DD-0020):
 
 Every race can also be **ridden lap-by-lap or quick-simmed**, independent of depth.
 
+## 🆕 Prototype v0.2 highlights
+
+- **Save & continue** — the title screen detects local saves, autosaves at week
+  boundaries, and preserves engine state so a career can be resumed reliably.
+- **Growing-up timeline** — choose a birthday, see the rider age in a real
+  calendar year, and move from 50cc through 65cc, 85cc, and Supermini classes.
+- **Multi-season careers** — season recaps now lead into the next year, carrying
+  forward relationships, garage history, memories, rivals, and bike keepsakes.
+- **Facebook-style marketplace** — browse a two-column grid of local listings,
+  inspect item detail pages, spot rare finds, buy outright, or make offers.
+- **Competitive balance pass** — race fields scale around the rider's age and
+  current ability so each class stays believable and playable.
+
 ---
 
 ## 🏗️ Architecture
@@ -112,11 +126,11 @@ as required by the Design Bible.
 
 ## Scope of this prototype
 
-This is **one season**, by design — the point is to prove the *feel*, not the
-full career. Rider-vs-Parent campaigns, the full support ladder, world
-simulation at scale, property/lifestyle systems, and multi-year story chains are
-specified in `design/` and are future work.
+This is still a focused youth-career slice, by design — the point is to prove
+the *feel*, not the full commercial game. Rider-vs-Parent campaigns, the full
+support ladder, world simulation at scale, property/lifestyle systems, and
+adult/pro careers are specified in `design/` and are future work.
 
 ---
 
-*Legacy Studios · Prototype v0.1 · We create interactive lives worth remembering.*
+*Legacy Studios · Prototype v0.2 · We create interactive lives worth remembering.*
