@@ -15,6 +15,7 @@ import { WorldEngine } from './engines/worldEngine.js';
 import { StoryEngine } from './engines/storyEngine.js';
 import { OpportunityEngine } from './engines/opportunityEngine.js';
 import { MarketplaceEngine } from './engines/marketplaceEngine.js';
+import { SponsorEngine } from './engines/sponsorEngine.js';
 import { RaceSession } from './engines/raceEngine.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
@@ -62,6 +63,9 @@ export class Game {
     this.market = new MarketplaceEngine(this);
     this.opportunity = new OpportunityEngine(this);
     this.opportunity.wire();
+    this.sponsors = new SponsorEngine(this);
+    this.sponsors.wire();
+    if (!this.state.sponsors) this.state.sponsors = [];
 
     this.currentRace = null;
     this._weekLog = null;
@@ -519,6 +523,16 @@ export class Game {
     return CLASS_FOR_AGE(age);
   }
 
+  // Career tallies (used by sponsor eligibility, recaps).
+  careerWins() {
+    const past = this.state.careerHistory.reduce((a, s) => a + (s.wins ?? 0), 0);
+    return past + this.state.season.results.filter((r) => r.overall === 1).length;
+  }
+  careerPodiums() {
+    const past = this.state.careerHistory.reduce((a, s) => a + (s.podiums ?? 0), 0);
+    return past + this.state.season.results.filter((r) => r.overall <= 3 && !r.dnf).length;
+  }
+
   // Summarize the season just finished into the career record.
   archiveSeason() {
     const s = this.state.season;
@@ -604,6 +618,7 @@ export class Game {
       r.rating = Math.min(94, r.rating + this.rng.range(2, 5));
     }
     this.story.newSeason();
+    this.sponsors.paySeasonStipends();
 
     this.addNews(`A new season begins. ${this.rider.name} is ${this.rider.age} now, riding ${this.rider.klass}.`, 'world');
     this.bus.emit('season:started', { season: this.state.seasonNumber, week: 1 });

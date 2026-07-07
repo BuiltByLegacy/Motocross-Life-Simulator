@@ -285,6 +285,7 @@ export class App {
       ['stats', '📊', 'Stats'],
       ['garage', '🏠', 'Garage'],
       ['market', '📱', 'Market'],
+      ['sponsors', '💰', 'Sponsors'],
       ['people', '👥', 'People'],
       ['journal', '📓', 'Journal'],
     ];
@@ -304,6 +305,7 @@ export class App {
   renderTab() {
     switch (this.tab) {
       case 'stats': return this.renderStatsTab();
+      case 'sponsors': return this.renderSponsorsTab();
       case 'garage': return this.renderGarage();
       case 'market': return this.renderMarket();
       case 'people': return this.renderPeople();
@@ -858,6 +860,55 @@ export class App {
     );
   }
 
+  renderSponsorsTab() {
+    const g = this.game;
+    const board = g.sponsors.board();
+    const active = g.sponsors.active();
+
+    const sponsorRow = (s) => {
+      const locked = s.status === 'locked';
+      const isActive = s.status === 'active';
+      return el('div', { class: 'sponsor-row' + (locked ? ' locked' : '') + (isActive ? ' active' : '') },
+        el('div', { class: 'sp-logo' }, s.logo),
+        el('div', { class: 'sp-info' },
+          el('div', {}, el('b', {}, s.name), ' ', el('span', { class: 'sp-tier ' + s.tier }, s.tier)),
+          el('div', { class: 'faint small' }, s.pitch),
+          el('div', { class: 'small', style: 'color:var(--green)' }, `$${s.bonus} to sign · $${s.stipend}/season · $${s.contingency} per top-${s.payThru}`),
+        ),
+        el('div', { class: 'sp-action' },
+          isActive ? el('span', { class: 'sp-check' }, '✓ On your bike')
+            : locked ? el('span', { class: 'faint small' }, '🔒 Locked')
+            : el('button', { class: 'btn small primary', onclick: () => this.pitchSponsor(s.id) }, 'Ask'),
+        ),
+      );
+    };
+
+    const tierSection = (label, tier) => el('div', { class: 'card' },
+      el('h3', {}, label),
+      ...board[tier].map(sponsorRow),
+    );
+
+    return el('div', {},
+      el('div', { class: 'card' },
+        el('div', { class: 'eyebrow' }, 'Sponsorship' ),
+        el('h2', {}, 'Sponsors'),
+        el('p', { class: 'small faint' }, 'Pitch local businesses for a logo on your bike. Do well, earn bigger deals. Sponsors pay to sign, a season stipend, and contingency for good finishes.'),
+        active.length
+          ? el('div', { class: 'sp-active-strip' }, ...active.map((s) => el('span', { class: 'sp-chip', title: s.name }, s.logo + ' ' + s.name)))
+          : el('div', { class: 'empty' }, 'No sponsors yet. Go earn your first logo.'),
+      ),
+      tierSection('🏪 Local', 'local'),
+      tierSection('🌎 Regional', 'regional'),
+      tierSection('🏆 National', 'national'),
+    );
+  }
+
+  pitchSponsor(id) {
+    const res = this.game.sponsors.pitch(id);
+    this._flash(res.msg);
+    this.render();
+  }
+
   renderGarage() {
     const g = this.game;
     const b = g.bike;
@@ -868,6 +919,7 @@ export class App {
         el('p', { class: 'small faint' }, `#${b.serial} · Condition ${b.condition} · Reliability ${b.reliability} · Handling ${b.handling} · Performance ${b.performance}`),
         el('p', { class: 'small' }, `🛞 Tire wear: `, el('b', { style: (b.tireWear ?? 0) > 60 ? 'color:var(--red)' : 'color:var(--ink)' }, `${b.tireWear ?? 0}%`), (b.tireWear ?? 0) > 60 ? el('span', { class: 'faint' }, ' — worn; grip is going. Buy fresh tires.') : null),
         b.installed.length ? el('p', { class: 'small' }, '🔩 Installed: ' + b.installed.join(', ')) : el('p', { class: 'small faint' }, 'Bone stock, for now.'),
+        (b.sponsors && b.sponsors.length) ? el('p', { class: 'small' }, '🏷️ Sponsor logos: ' + b.sponsors.join(', ')) : null,
         b.memories.length ? el('div', {},
           el('div', { class: 'small faint', style: 'margin-top:8px' }, 'This bike remembers:'),
           ...b.memories.slice(-4).map((m) => el('div', { class: 'small muted' }, `• ${m.text}`)),

@@ -106,18 +106,18 @@ button { font-family: inherit; }
 .tabbar {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 30;
   width: 100%; max-width: 480px;
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  display: grid; grid-template-columns: repeat(7, 1fr);
   background: rgba(27, 30, 36, 0.96); backdrop-filter: blur(8px);
   border-top: 1px solid var(--line);
-  padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 3px calc(6px + env(safe-area-inset-bottom, 0px));
 }
 .tabitem {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   background: none; border: 0; color: var(--ink-faint); cursor: pointer;
   padding: 6px 2px; border-radius: 10px; min-height: 48px;
 }
-.tabitem .ti-icon { font-size: 1.15rem; line-height: 1; filter: grayscale(0.4); opacity: 0.8; }
-.tabitem .ti-label { font-size: 0.6rem; letter-spacing: 0.1px; }
+.tabitem .ti-icon { font-size: 1.02rem; line-height: 1; filter: grayscale(0.4); opacity: 0.8; }
+.tabitem .ti-label { font-size: 0.53rem; letter-spacing: 0px; }
 .tabitem.active { color: var(--amber-2); }
 .tabitem.active .ti-icon { filter: none; opacity: 1; transform: translateY(-1px); }
 
@@ -251,6 +251,22 @@ button { font-family: inherit; }
 .picker-list { display: flex; flex-direction: column; gap: 6px; }
 .picker-opt { justify-content: space-between; }
 .pick-cost { color: var(--gold); }
+
+/* ---- Sponsors ---- */
+.sp-active-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sp-chip { font-size: 0.78rem; background: var(--panel-2); border: 1px solid #4a5a3a; color: var(--green); border-radius: 999px; padding: 3px 10px; }
+.sponsor-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.sponsor-row:last-child { border-bottom: 0; }
+.sponsor-row.locked { opacity: 0.5; }
+.sponsor-row.active { background: linear-gradient(90deg, rgba(87,194,107,0.08), transparent); }
+.sp-logo { font-size: 1.8rem; width: 40px; text-align: center; flex: none; }
+.sp-info { flex: 1; min-width: 0; }
+.sp-tier { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 4px; padding: 1px 6px; }
+.sp-tier.local { background: #26333d; color: #8fb7d4; }
+.sp-tier.regional { background: #33301c; color: var(--gold); }
+.sp-tier.national { background: #33202a; color: #e58fb0; }
+.sp-action { flex: none; }
+.sp-check { font-size: 0.76rem; color: var(--green); }
 
 /* ---- Skill rows ---- */
 .skill-row { margin-bottom: 10px; }

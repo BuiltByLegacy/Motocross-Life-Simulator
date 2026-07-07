@@ -1575,3 +1575,42 @@ export const SCENARIOS_PARENT = [
     ],
   },
 ];
+
+// ===========================================================================
+// SPONSORS (Sponsors tab / issue: sponsorship system)
+// ---------------------------------------------------------------------------
+// Fictional brands only. Three tiers — Local, Regional, National — gated by
+// results/reputation. Each sponsor pays a signing bonus on the deal and a
+// per-race contingency when the rider finishes at or better than `payThru`.
+// ===========================================================================
+export const SPONSORS = [
+  // --- Local: low bar, small money, the first logos on the bike ---
+  { id: 'sunrise_coffee', name: 'Sunrise Coffee', logo: '☕', tier: 'local', bonus: 60, stipend: 15, contingency: 25, payThru: 5,
+    pitch: 'The coffee shop by the track will slap a sticker on for gas money.', req: (g) => true },
+  { id: 'bear_claw', name: 'Bear Claw Diner', logo: '🐻', tier: 'local', bonus: 80, stipend: 15, contingency: 30, payThru: 5,
+    pitch: 'The diner sponsors a couple local kids every year. Pancakes optional.', req: (g) => g.season.results.length >= 1 || g.rel('shop_rocky').get('reputation') > 30 },
+  { id: 'main_street_auto', name: 'Main Street Auto', logo: '🔩', tier: 'local', bonus: 100, stipend: 20, contingency: 30, payThru: 4,
+    pitch: 'The auto shop likes a fast kid representing the town.', req: (g) => g.rel('shop_rocky').get('reputation') > 35 },
+  { id: 'corner_scoop', name: 'Corner Scoop', logo: '🍦', tier: 'local', bonus: 70, stipend: 10, contingency: 20, payThru: 6,
+    pitch: 'The ice cream stand wants their cone on your number plate.', req: (g) => true },
+
+  // --- Regional: needs some results; real per-race money ---
+  { id: 'buckley_burger', name: 'Buckley Burger', logo: '🍔', tier: 'regional', bonus: 250, stipend: 40, contingency: 75, payThru: 5,
+    pitch: 'The regional burger chain runs a real amateur support program.', req: (g) => g.season.points > 20 || g.state.season.bestFinish <= 3 },
+  { id: 'grind_house', name: 'Grind House Coffee', logo: '☕', tier: 'regional', bonus: 300, stipend: 50, contingency: 80, payThru: 3,
+    pitch: 'The coffee chain wants a young face for its weekend-warrior brand.', req: (g) => (g.state.season.bestFinish ?? 99) <= 3 },
+  { id: 'tristate_powersports', name: 'Tri-State Powersports', logo: '🏍️', tier: 'regional', bonus: 350, stipend: 60, contingency: 90, payThru: 3,
+    pitch: 'The regional dealer network backs riders who win motos.', req: (g) => g.family.support_level >= 1 && g.season.points > 30 },
+  { id: 'velocity_energy', name: 'Velocity Energy', logo: '⚡', tier: 'regional', bonus: 300, stipend: 40, contingency: 100, payThru: 2,
+    pitch: 'An up-and-coming energy drink wants a rising star. Podiums only.', req: (g) => (g.state.season.bestFinish ?? 99) <= 2 },
+
+  // --- National: high bar, big money, prestige ---
+  { id: 'nitro_cola', name: 'Nitro Cola', logo: '🥤', tier: 'national', bonus: 1200, stipend: 150, contingency: 300, payThru: 3,
+    pitch: 'A national soft-drink giant scouting the next amateur phenom.', req: (g) => g.family.support_level >= 1 && (g.state.season.bestFinish ?? 99) <= 2 },
+  { id: 'apex_gear', name: 'Apex Moto Gear', logo: '🥇', tier: 'national', bonus: 900, stipend: 120, contingency: 250, payThru: 3,
+    pitch: 'A national gear brand — free kit and real contingency money.', req: (g) => g.careerPodiums && g.careerPodiums() >= 3 },
+  { id: 'titan_tires', name: 'Titan Tires', logo: '🛞', tier: 'national', bonus: 800, stipend: 100, contingency: 220, payThru: 2,
+    pitch: 'The tire brand backs riders who can win on their rubber.', req: (g) => (g.state.season.bestFinish ?? 99) <= 1 },
+  { id: 'voltage_energy', name: 'Voltage Energy', logo: '🔋', tier: 'national', bonus: 1500, stipend: 200, contingency: 350, payThru: 2,
+    pitch: 'The biggest energy-drink program in the sport. They only sign winners.', req: (g) => g.family.support_level >= 2 || (g.careerWins && g.careerWins() >= 2) },
+];

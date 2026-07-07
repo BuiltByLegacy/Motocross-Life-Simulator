@@ -101,6 +101,7 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     },
 
     opportunities: [], // open opportunities (Opportunity Engine)
+    sponsors: [], // active sponsor ids (Sponsor Engine)
     flags: {},
     schedule: [], // activities chosen for the current week
     pendingScenario: null,
