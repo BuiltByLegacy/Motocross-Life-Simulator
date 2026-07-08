@@ -40,3 +40,9 @@ This index organizes GitHub planning epics for Motocross: Chasing the Dream by L
 - Create one GitHub epic or parent issue from each epic file.
 - Use each `Child Issues` section to seed scoped planning issues.
 - Keep implementation tasks separate until design dependencies and emotional goals are clear.
+
+## Issue Draft Index
+
+| Draft File | System | Purpose | Related Epics |
+| --- | --- | --- | --- |
+| [09_age_responsibility_progression_issues.md](issues/09_age_responsibility_progression_issues.md) | Age & Responsibility Progression System | Drafts design/documentation issues for age bands, action permissions, trust modifiers, jobs/chores, phone and marketplace access, parent approval, age-based UI visibility, memory hooks, and DD-0019. | Career Progression; Family & Economy Engine; Relationship Engine; Phone / Internet UI; Memory Engine; Parent Campaign; Rider Campaign |
