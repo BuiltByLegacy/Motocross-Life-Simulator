@@ -1638,3 +1638,70 @@ export const SPONSORS = [
   { id: 'voltage_energy', name: 'Voltage Energy', logo: '🔋', tier: 'national', bonus: 1500, stipend: 200, contingency: 350, payThru: 2,
     pitch: 'The biggest energy-drink program in the sport. They only sign winners.', req: (g) => g.family.support_level >= 2 || (g.careerWins && g.careerWins() >= 2) },
 ];
+
+// ===========================================================================
+// SERIES (issue #9) — choose Local / Regional / National for the year.
+// Field sizes and difficulty scale by series; the schedule is generated per
+// series so the season, names, and competition change with your ambition.
+// ===========================================================================
+export const SERIES = {
+  local: {
+    key: 'local', label: 'Local Series', icon: '🏁',
+    blurb: '15–20 riders a gate. Cheap, close to home, and a real local title to chase.',
+    fieldSize: 18, entryMult: 1, baseField: 0.4,
+    tracks: ['Rocky Ridge MX', 'Pine Hollow', 'Sandy Creek', 'Miller Farm', 'County Line MX'],
+  },
+  regional: {
+    key: 'regional', label: 'Regional Series', icon: '🌎',
+    blurb: '25–30 riders, real travel, tougher competition. Scouts start to notice.',
+    fieldSize: 28, entryMult: 1.7, baseField: 0.52,
+    tracks: ['Southwick', 'Budds Creek', 'High Point', 'Steel City', 'Unadilla'],
+  },
+  national: {
+    key: 'national', label: 'National Series', icon: '🏆',
+    blurb: '42 riders in every class — the toughest amateurs in the country. Expensive, brutal, career-defining.',
+    fieldSize: 42, entryMult: 2.6, baseField: 0.66,
+    tracks: ['Loretta Lynn\'s', 'Daytona', 'Mammoth', 'Ponca City', 'Freestone'],
+  },
+};
+
+export function buildSchedule(seriesKey) {
+  const s = SERIES[seriesKey] ?? SERIES.local;
+  const raceWeeks = { 3: 0, 5: 1, 7: 2, 9: 3, 11: 4 };
+  const cal = [];
+  for (let week = 1; week <= 12; week++) {
+    if (week in raceWeeks) {
+      const i = raceWeeks[week];
+      const isFinale = i === 4;
+      const laps = 5 + Math.floor(i / 2);
+      cal.push({
+        week,
+        title: `${s.label} — Round ${i + 1}`,
+        race: {
+          name: `${s.tracks[i]} — Round ${i + 1}`,
+          kind: seriesKey,
+          series: seriesKey,
+          round: i + 1,
+          laps,
+          motos: 2,
+          field: Math.min(0.8, s.baseField + i * 0.03 + (isFinale ? 0.04 : 0)),
+          riders: s.fieldSize,
+          entryMult: s.entryMult,
+        },
+      });
+    } else {
+      const titles = {
+        1: ['Preseason', 'A new season. Get the bike and the body ready.'],
+        2: ['Build Week', 'No race this weekend. Time to prepare.'],
+        4: ['Midweek', 'Recover, wrench, live a little.'],
+        6: ['Midweek', 'The season is finding its rhythm.'],
+        8: ['Midweek', 'One round left before the finale build-up.'],
+        10: ['Finale Prep', 'The championship round is next weekend. Everything matters now.'],
+        12: ['Season Finale', 'The season is over. Time to look back.'],
+      };
+      const [title, note] = titles[week] ?? ['Midweek', 'A quieter week.'];
+      cal.push({ week, title, note });
+    }
+  }
+  return cal;
+}

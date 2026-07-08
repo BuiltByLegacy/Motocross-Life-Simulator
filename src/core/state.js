@@ -4,7 +4,7 @@
 // be serialized (save/load) and inspected. Engines never store their own copy
 // of the world; they read and mutate this.
 
-import { PEOPLE, PEOPLE_PARENT, BIKE_FOR_CLASS, CLASS_FOR_AGE } from '../data/content.js';
+import { PEOPLE, PEOPLE_PARENT, BIKE_FOR_CLASS, CLASS_FOR_AGE, buildSchedule } from '../data/content.js';
 
 let _uid = 0;
 export function uid(prefix = 'id') {
@@ -112,6 +112,8 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     // ---- multi-week / multi-season / campaign scaffolding ----
     campaign: 'rider', // 'rider' | 'parent' (DD-0012)
     schoolMode: 'school', // 'school' | 'homeschool' (issue #5)
+    series: 'local', // 'local' | 'regional' | 'national' (issue #9)
+    calendar: buildSchedule('local'), // the season's 12-week schedule
     seasonNumber: 1,
     startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
     _preparedWeek: 0, // guards once-per-week setup across save/load

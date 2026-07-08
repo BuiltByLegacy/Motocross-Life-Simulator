@@ -6,7 +6,7 @@
 
 import { Game, SIM_DEPTHS, ordinal } from './game.js';
 import { RACE_STRATEGIES, estimateForm } from './engines/raceEngine.js';
-import { CALENDAR } from './data/content.js';
+import { SERIES } from './data/content.js';
 
 // tiny hyperscript helper
 function el(tag, props = {}, ...kids) {
@@ -78,6 +78,7 @@ export class App {
     let depth = 'detailed';
     let campaign = 'rider';
     let schoolMode = 'school';
+    let series = 'local';
     const thisYear = new Date().getFullYear();
     let birthdate = `${thisYear - 4}-05-15`; // default: rider turns 4 this year
 
@@ -182,19 +183,31 @@ export class App {
           ),
         ),
         el('div', { class: 'field' },
+          el('label', {}, 'Series — how big do you race?'),
+          el('div', { class: 'depth-grid' },
+            ...Object.values(SERIES).map((s) =>
+              el('div', {
+                class: 'depth-card' + (s.key === series ? ' selected' : ''),
+                'data-series': s.key,
+                onclick: () => { series = s.key; this.root.querySelectorAll('[data-series]').forEach((e2) => e2.classList.toggle('selected', e2.dataset.series === series)); },
+              }, el('b', {}, `${s.icon} ${s.label}`), el('div', { class: 'small muted' }, `${s.fieldSize} riders/gate · ${s.blurb}`))
+            ),
+          ),
+        ),
+        el('div', { class: 'field' },
           el('label', {}, 'Simulation depth — how much do you want to live yourself?'),
           el('div', { class: 'depth-grid' }, ...depthCards),
         ),
-        el('button', { class: 'btn primary wide', onclick: () => this.startGame({ name, depth, birthdate, campaign, schoolMode }) }, `Begin — ${thisYear} Season`),
+        el('button', { class: 'btn primary wide', onclick: () => this.startGame({ name, depth, birthdate, campaign, schoolMode, series }) }, `Begin — ${thisYear} Season`),
       ),
       el('p', { class: 'faint small center' }, 'Prototype v0.1 · Legacy Studios · Build memories, not mechanics.'),
     );
     this.root.replaceChildren(view);
   }
 
-  startGame({ name, depth, birthdate, campaign, schoolMode }) {
+  startGame({ name, depth, birthdate, campaign, schoolMode, series }) {
     this.clearSave(); // a fresh life replaces any prior save
-    this.game = new Game({ riderName: name, depth, birthdate, campaign, schoolMode, seed: Date.now() });
+    this.game = new Game({ riderName: name, depth, birthdate, campaign, schoolMode, series, seed: Date.now() });
     this.tab = 'week';
     this.startWeek();
   }
@@ -224,7 +237,7 @@ export class App {
         el('small', {}, ` · age ${g.rider.age} · ${g.rider.klass}`),
       ),
       el('div', {},
-        el('span', { class: 'badge amber' }, `${g.seasonYear} · Wk ${Math.min(g.week, 12)}/12`),
+        el('span', { class: 'badge amber' }, `${g.series.icon} ${g.seasonYear} · Wk ${Math.min(g.week, 12)}/12`),
         ' ',
         el('span', { class: 'badge' }, g.isParent ? '👨‍👩‍👧 Parent' : '🏍️ Rider'),
         ' ',
@@ -390,6 +403,13 @@ export class App {
   handleRaceOrSummary() {
     const g = this.game;
     if (g.isRaceWeek()) {
+      if (g.mustMissRace()) {
+        g.recordMissedRace();
+        this.digest.push({ type: 'missed', race: g.meta().race, injury: g.rider.injury });
+        if (g.depth.autoRace && g.depth.autoPlan) return this.finishWeek();
+        this.showWeek(() => this.viewMissedRace());
+        return;
+      }
       if (g.depth.autoRace) {
         const race = g.buildRace();
         const result = race.simulateRemaining('steady');
@@ -606,7 +626,7 @@ export class App {
       el('div', { class: 'card' },
         el('div', { class: 'eyebrow' }, race.kind === 'regional' ? '🏆 Regional Qualifier' : '🏁 Race Day'),
         el('h2', {}, race.name),
-        el('p', { class: 'muted' }, `${race.motos} motos · ${race.laps} laps each · ${g.world.field().length + 1} riders on the gate.`),
+        el('p', { class: 'muted' }, `${race.motos} motos · ${race.laps} laps each · ${race.riders ?? (g.world.field().length + 1)} riders on the gate.`),
         el('p', {}, `Your form: `, el('b', { style: 'color:var(--amber-2)' }, `${formWord} (${form})`)),
         warn.length ? el('div', { class: 'hint' }, '⚠️ ' + warn.join(' ')) : el('p', { class: 'small faint' }, 'The bike and body feel ready.'),
         this.classEntrySection(),
@@ -665,7 +685,7 @@ export class App {
       el('div', { class: 'card' },
         el('div', { class: 'eyebrow' }, race.kind === 'regional' ? '🏆 Regional Qualifier' : '🏁 Race Day'),
         el('h2', {}, race.name),
-        el('p', { class: 'muted' }, `${g.rider.name} is on the gate. ${race.motos} motos · ${race.laps} laps · ${g.world.field().length + 1} riders.`),
+        el('p', { class: 'muted' }, `${g.rider.name} is on the gate. ${race.motos} motos · ${race.laps} laps · ${race.riders ?? (g.world.field().length + 1)} riders.`),
         el('p', {}, `Their form: `, el('b', { style: 'color:var(--amber-2)' }, `${formWord} (${form})`)),
         warn.length ? el('div', { class: 'hint' }, '⚠️ ' + warn.join(' ')) : el('p', { class: 'small faint' }, 'The bike and the kid look ready.'),
         el('hr', { class: 'divider' }),
@@ -699,6 +719,20 @@ export class App {
     this.lastResult = result;
     this.digest.push({ type: 'race', result });
     this.showWeek(() => this.viewRaceResult(result));
+  }
+
+  viewMissedRace() {
+    const g = this.game;
+    const race = g.meta().race;
+    return el('div', {},
+      el('div', { class: 'card center' },
+        el('div', { class: 'eyebrow' }, race.name),
+        el('div', { class: 'result-place', style: 'color:var(--red)' }, 'DNS'),
+        el('p', { class: 'muted' }, `${g.isParent ? g.rider.name + ' is' : "You're"} too hurt to race — ${g.rider.injury.name}. You had to sit this round out.`),
+        el('p', { class: 'small faint' }, 'Injuries have consequences: a missed round is points you can\'t get back.'),
+        el('button', { class: 'btn primary wide', onclick: () => this.finishWeek() }, 'Watch from the fence →'),
+      ),
+    );
   }
 
   quickSimRace() {
@@ -864,6 +898,9 @@ export class App {
       return el('div', { class: 'digest-item' },
         el('div', {}, '🏁 ', el('b', {}, r.race.name), ' — ', r.dnf ? 'DNF' : `${ordinal(r.overall)} overall (+${r.points} pts)`),
       );
+    }
+    if (d.type === 'missed') {
+      return el('div', { class: 'digest-item' }, el('span', { style: 'color:var(--red)' }, `🚑 Missed ${d.race.name} — injured (${d.injury.name}).`));
     }
     return null;
   }
@@ -1174,10 +1211,13 @@ export class App {
 
     return el('div', {},
       el('div', { class: 'card' },
-        el('div', { class: 'eyebrow' }, 'Season so far' ),
-        el('h2', {}, 'Results'),
+        el('div', { class: 'eyebrow' }, `${g.series.icon} ${g.series.label}` ),
+        el('h2', {}, 'Championship'),
+        (() => { const ch = g.championshipStanding(); return el('p', {}, ch.isChampion && results.length >= 5 ? el('b', { style: 'color:var(--gold)' }, '🏆 Leading the title!') : `Currently ${ordinal(ch.pos)} · ${ch.points} points`); })(),
+        el('hr', { class: 'divider' }),
+        el('h3', {}, 'Results'),
         results.length
-          ? el('div', {}, ...results.map((r) => el('div', { class: 'small' }, `Wk ${r.week} · ${r.race} — `, el('b', {}, r.dnf ? 'DNF' : ordinal(r.overall)), ` (+${r.points})`)))
+          ? el('div', {}, ...results.map((r) => el('div', { class: 'small' }, `Wk ${r.week} · ${r.race} — `, el('b', {}, r.missed ? 'DNS' : r.dnf ? 'DNF' : ordinal(r.overall)), ` (+${r.points})`)))
           : el('div', { class: 'empty' }, 'No races yet.'),
         el('p', { class: 'small faint', style: 'margin-top:8px' }, `Total: ${g.state.season.points} points · Best finish ${g.state.season.bestFinish ? ordinal(g.state.season.bestFinish) : '—'}`),
       ),
@@ -1232,6 +1272,8 @@ export class App {
           el('div', { class: 'stat' }, el('div', { class: 'k' }, 'Podiums'), el('div', { class: 'v mono' }, podiums)),
         ),
         el('p', { style: 'margin-top:14px;font-size:1.05rem' }, closing),
+        (() => { const ch = g.championshipStanding(); return el('p', { style: 'margin:4px 0', class: ch.isChampion ? '' : 'small' },
+          ch.isChampion ? el('b', { style: 'color:var(--gold)' }, `🏆 ${g.series.label} Champion!`) : el('span', { class: 'faint' }, `Championship: ${ordinal(ch.pos)} in the ${g.series.label} (${ch.points} pts)`)); })(),
         el('p', { class: 'small faint' }, 'Support reached: ' + (supportLabels[g.family.support_level] ?? 'Supported')),
       ),
       el('div', { class: 'card' },
@@ -1255,7 +1297,7 @@ export class App {
       ),
       el('div', { class: 'card' },
         el('h3', {}, '🏁 The Season, Round by Round'),
-        ...results.map((r) => el('div', { class: 'small' }, `Wk ${r.week} · ${r.race} — `, el('b', {}, r.dnf ? 'DNF' : ordinal(r.overall)), ` (+${r.points})`)),
+        ...results.map((r) => el('div', { class: 'small' }, `Wk ${r.week} · ${r.race} — `, el('b', {}, r.missed ? 'DNS' : r.dnf ? 'DNF' : ordinal(r.overall)), ` (+${r.points})`)),
         !results.length ? el('div', { class: 'empty' }, 'No races recorded.') : null,
       ),
       history.length ? el('div', { class: 'card' },

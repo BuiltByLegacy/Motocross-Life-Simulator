@@ -17,6 +17,12 @@ const STRATEGIES = {
 
 export const RACE_STRATEGIES = STRATEGIES;
 
+const FILLER_FIRST = ['Cody', 'Blake', 'Hunter', 'Ryder', 'Chase', 'Drew', 'Colt', 'Zane', 'Beau', 'Gage', 'Trey', 'Kade', 'Luke', 'Wyatt'];
+const FILLER_LAST = ['Barnes', 'Ford', 'Quinn', 'Sharp', 'Doyle', 'Frost', 'Lane', 'Marsh', 'Pruett', 'Case', 'Hale', 'Dunn'];
+function FILLER_NAME(g) {
+  return `${g.rng.pick(FILLER_FIRST)} ${g.rng.pick(FILLER_LAST)}`;
+}
+
 function playerBaseRating(g, overrideBike) {
   const s = g.rider.skills;
   const rider =
@@ -56,27 +62,32 @@ export class RaceSession {
     const g = this.game;
     const fieldShift = (this.race.field - 0.45) * 30;
     // You race your peers. Center the field on an age-appropriate baseline that
-    // sits near the player's own ability, so racing is competitive at every age
-    // and your practice/upgrades/confidence move you up the order. A rider's
-    // stored rating (mean ~50) maps to a gap above/below that baseline, so the
-    // rival is genuinely faster and everyone keeps their relative pecking order.
+    // sits near the player's own ability, so racing is competitive at every age.
     const ageBaseline = 32 + (g.rider.age - 4) * 1.6;
+    const scale = (rating) => Math.max(12, Math.min(96, ageBaseline + (rating - 50) * 0.7 + fieldShift));
+
+    const opponents = g.world.field().map((r) => ({
+      id: r.id, name: r.name, isRival: r.isRival, isRegular: true,
+      base: scale(r.rating), aggression: r.aggression,
+    }));
+
+    // Fill to the series field size with event-only regional riders (issue #9):
+    // riders you only see at this event, so field size varies by series.
+    const target = (this.race.riders ?? opponents.length + 1) - 1;
+    let fi = 0;
+    while (opponents.length < target) {
+      opponents.push({
+        id: 'fill_' + fi, name: FILLER_NAME(g), isRegular: false,
+        base: scale(g.rng.range(36, 64)), aggression: g.rng.range(0.35, 0.8),
+      });
+      fi++;
+    }
+    // If a series is smaller than the regular roster, trim.
+    opponents.length = Math.min(opponents.length, Math.max(1, target));
+
     this.riders = [
-      {
-        id: 'player',
-        name: g.rider.name,
-        isPlayer: true,
-        base: playerBaseRating(g, this.bike),
-        aggression: 0.6,
-      },
-      ...g.world.field().map((r) => ({
-        id: r.id,
-        name: r.name,
-        isPlayer: false,
-        isRival: r.isRival,
-        base: Math.max(12, Math.min(96, ageBaseline + (r.rating - 50) * 0.7 + fieldShift)),
-        aggression: r.aggression,
-      })),
+      { id: 'player', name: g.rider.name, isPlayer: true, base: playerBaseRating(g, this.bike), aggression: 0.6 },
+      ...opponents,
     ];
   }
 
@@ -298,6 +309,17 @@ export class RaceSession {
     });
     scored.sort((a, b) => a.total - b.total || a.second - b.second);
     const overall = scored.findIndex((s) => s.r.isPlayer) + 1;
+
+    // Championship: accumulate season points for the persistent regulars so a
+    // title can be contested (issue #9). Fillers are event-only and don't count.
+    const pTable = [0, 25, 22, 20, 18, 16, 15, 14, 13, 12, 11];
+    if (!g.state.season.riderPoints) g.state.season.riderPoints = {};
+    scored.forEach((s, i) => {
+      if (s.r.isRegular) {
+        const pts = pTable[i + 1] ?? Math.max(1, 11 - (i + 1 - 10));
+        g.state.season.riderPoints[s.r.id] = (g.state.season.riderPoints[s.r.id] ?? 0) + pts;
+      }
+    });
     const playerScore = scored.find((s) => s.r.isPlayer);
     const rivalScore = scored.find((s) => s.r.isRival);
 

@@ -8,7 +8,7 @@
 import { RNG } from './core/rng.js';
 import { EventBus } from './core/eventBus.js';
 import { createInitialState } from './core/state.js';
-import { CALENDAR, ACTIVITIES, ACTIVITIES_PARENT, CLASS_FOR_AGE, BIKE_FOR_CLASS, ELIGIBLE_CLASSES } from './data/content.js';
+import { ACTIVITIES, ACTIVITIES_PARENT, CLASS_FOR_AGE, BIKE_FOR_CLASS, ELIGIBLE_CLASSES, buildSchedule, SERIES } from './data/content.js';
 import { MemoryEngine } from './engines/memoryEngine.js';
 import { RelationshipEngine } from './engines/relationshipEngine.js';
 import { WorldEngine } from './engines/worldEngine.js';
@@ -48,11 +48,13 @@ export const SIM_DEPTHS = {
 };
 
 export class Game {
-  constructor({ riderName = 'Riley', seed = Date.now(), depth = 'detailed', birthdate = '2022-05-15', campaign = 'rider', schoolMode = 'school' } = {}) {
+  constructor({ riderName = 'Riley', seed = Date.now(), depth = 'detailed', birthdate = '2022-05-15', campaign = 'rider', schoolMode = 'school', series = 'local' } = {}) {
     this.state = createInitialState(riderName, seed, birthdate, campaign);
     this.state.simDepth = depth;
     this.state.campaign = campaign;
     this.state.schoolMode = schoolMode;
+    this.state.series = series;
+    this.state.calendar = buildSchedule(series);
     this.rng = new RNG(seed);
     this.bus = new EventBus();
 
@@ -165,8 +167,9 @@ export class Game {
 
   // ---- weekly loop ---------------------------------------------------------
   meta(week = this.week) {
-    return CALENDAR.find((c) => c.week === week);
+    return (this.state.calendar ?? []).find((c) => c.week === week);
   }
+  get series() { return SERIES[this.state.series] ?? SERIES.local; }
   isRaceWeek(week = this.week) {
     return !!this.meta(week)?.race;
   }
@@ -460,6 +463,34 @@ export class Game {
     return this.currentRace;
   }
 
+  // Championship standing among the season's regulars (issue #9).
+  championshipStanding() {
+    const rp = this.state.season.riderPoints ?? {};
+    const mine = this.state.season.points;
+    const ahead = Object.values(rp).filter((p) => p > mine).length;
+    return { pos: ahead + 1, points: mine, isChampion: ahead === 0 && this.state.season.results.length > 0 };
+  }
+
+  // A serious injury forces you to sit out a race weekend (issue #9).
+  mustMissRace() {
+    const inj = this.rider.injury;
+    return !!(inj && inj.weeksOut > 0 && (inj.severity === 'moderate' || inj.severity === 'severe' || inj.weeksOut >= 2));
+  }
+  recordMissedRace() {
+    const race = this.meta().race;
+    this.state.season.results.push({
+      week: this.week, race: race.name, kind: race.kind, klass: this.bike.klass,
+      motos: [], overall: null, points: 0, dnf: false, missed: true,
+    });
+    this.addNews(`${this.rider.name} sat out ${race.name} — still recovering from ${this.rider.injury.name.toLowerCase()}.`, 'world');
+    this.memory.record({
+      type: 'personal', title: 'Watched From the Sidelines',
+      summary: `Injured, you had to skip ${race.name}. Watching your rivals race without you is its own kind of pain.`,
+      emotion: ['frustration', 'longing'], tags: ['injury', 'missed_opportunity'], importance: 58, force: true,
+    });
+    this.log(`🚑 Missed ${race.name} (injured).`);
+  }
+
   // Quick-sim an additional class entry (issue #4): its own bike, its own result.
   simulateClassEntry(entry, strategy = 'steady') {
     const session = new RaceSession(this, this.meta().race, entry.bike);
@@ -472,6 +503,10 @@ export class Game {
     const st = this.state;
     const first = !this.flag('had_race');
     this.setFlag('had_race', true);
+
+    // Entry fee / travel — scales with the series (issue #9).
+    const entry = Math.round(35 * (result.race.entryMult ?? 1));
+    this.spend(entry);
 
     // Physical toll & confidence swing. Wear the bike that actually raced.
     this.fatigue(26);
@@ -665,7 +700,8 @@ export class Game {
     // A new season resets the calendar clock but keeps the life.
     this.state.week = 1;
     this.state._preparedWeek = 0;
-    this.state.season = { results: [], points: 0, bestFinish: null };
+    this.state.season = { results: [], points: 0, bestFinish: null, classPoints: {}, riderPoints: {} };
+    this.state.calendar = buildSchedule(this.state.series);
     this.state.schedule = [];
     this.state.pendingScenario = null;
     this.state.chainQueue = [];
