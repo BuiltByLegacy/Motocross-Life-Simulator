@@ -49,3 +49,10 @@ Milestones group focused delivery goals. They should have clear exit criteria an
 **Goal:** Build the smallest playable slice that proves the game promise.
 
 **Exit criteria:** Included systems, excluded scope, success criteria, and manual test flows are agreed.
+
+## 9. Release Readiness / App Store Version 1.0
+
+**Goal:** Prepare Motocross: Chasing the Dream for TestFlight, App Store review, public launch, and launch-week monitoring.
+
+**Exit criteria:** Version 1.0 launch scope is agreed, launch blockers are tracked, TestFlight plan exists, core career loop and save/load are verified, App Store assets and privacy/compliance requirements are documented, the final launch checklist is complete, and post-launch monitoring is planned.
+

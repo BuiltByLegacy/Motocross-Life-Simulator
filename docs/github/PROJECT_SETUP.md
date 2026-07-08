@@ -67,3 +67,16 @@ The Human Development, Sport Evolution, and Motocross History issue drafts in `d
 - Motocross History
 
 These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, or create real GitHub issues directly. They also reinforce the design direction that sport changes should be gradual and authentic rather than disruptive random annual rule changes.
+
+## Release Readiness planning references
+
+The Release Readiness epic and issue drafts prepare **Motocross: Chasing the Dream** for App Store Version 1.0. Use `docs/github/epics/17_release_readiness.md` and `docs/github/issues/14_release_readiness_issues.md` when triaging work for:
+
+- App Store Version 1.0 launch scope and non-goals.
+- TestFlight internal and external beta planning.
+- Launch checklist, App Store assets, privacy/compliance, and final submission readiness.
+- Core career-loop, save/load, performance, accessibility, audio, balance, and UI polish validation.
+- Crash reporting, analytics, bug bash, and post-launch monitoring.
+
+These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, or create real GitHub issues directly.
+
