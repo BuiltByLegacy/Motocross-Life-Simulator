@@ -22,6 +22,9 @@ import { resolveResult, Standings } from './systems/raceResults.js';
 import { ClassProgression, MomentumTracker, RivalTracker } from './systems/competition.js';
 import { AssetRegistry, recordTransfer } from './systems/assetProvenance.js';
 import { MemoryTriggerRegistry, defaultTriggers } from './systems/memoryTriggers.js';
+import { NotificationQueue } from './systems/notifications.js';
+import { buildGarageView, makeListingDraft, publishListing, completeSale } from './systems/garageView.js';
+import { phoneApps as buildPhoneApps, canAccess } from './systems/phoneHub.js';
 import { RaceSession } from './engines/raceEngine.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
@@ -91,6 +94,18 @@ export class Game {
     this.memTriggers = MemoryTriggerRegistry.fromJSON(this.state.memTriggers, defaultTriggers());
     // Give the starting race bike a provenance record (issue #69).
     if (this.state.bike) this.assets.ensure(this.state.bike, { kind: 'bike' });
+    // Phone / Internet hub notification queue (issue #74).
+    this.notifications = NotificationQueue.fromJSON(this.state.notifications);
+    if (!this.state.market.drafts) this.state.market.drafts = []; // listing drafts (#76)
+    // Feed the phone: big memories and race results become notifications (#74).
+    this.bus.on('memory:created', ({ memory }) => {
+      if (memory && memory.importance >= 72) {
+        this.notify({ key: `mem_${memory.id}`, source: 'memory', priority: 'normal', title: memory.title, body: (memory.summary ?? '').slice(0, 90), actionTarget: { screen: 'journal' }, icon: '💭' });
+      }
+    });
+    this.bus.on('race:finished', ({ overall, race }) => {
+      this.notify({ source: 'competition', priority: overall <= 3 ? 'high' : 'normal', title: `Result: ${race.name}`, body: `Finished ${ordinal(overall)}.`, actionTarget: { screen: 'journal' }, icon: '🏁' });
+    });
 
     this.currentRace = null;
     this._weekLog = null;
@@ -174,6 +189,7 @@ export class Game {
     this.state.rivals = this.rivals.toJSON();
     this.state.assets = this.assets.toJSON();
     this.state.memTriggers = this.memTriggers.toJSON();
+    this.state.notifications = this.notifications.toJSON();
     return {
       v: 2,
       seed: this.rng.seed,
@@ -202,6 +218,7 @@ export class Game {
     g.rivals = RivalTracker.fromJSON(g.state.rivals);
     g.assets = AssetRegistry.fromJSON(g.state.assets);
     g.memTriggers = MemoryTriggerRegistry.fromJSON(g.state.memTriggers, defaultTriggers());
+    g.notifications = NotificationQueue.fromJSON(g.state.notifications);
     return g;
   }
 
@@ -305,6 +322,22 @@ export class Game {
     this.world.tick();
     // Occasionally the board turns over without the player looking.
     if (this.rng.chance(0.5)) this.market.refresh(false);
+    // Phone: surface upcoming race weekends + registration reminders (#74).
+    this.queueCalendarNotifications();
+  }
+
+  // Add calendar notifications for the next race weekend and its registration
+  // deadline (deduped per week). Expires once the week has passed (#74).
+  queueCalendarNotifications() {
+    const next = (this.state.calendar ?? []).find((c) => c.week >= this.week && c.race);
+    if (!next) return;
+    const dayOfWeek = (next.week - 1) * 7 + (this.state.seasonNumber - 1) * 84;
+    const weeksOut = next.week - this.week;
+    if (weeksOut === 0) {
+      this.notify({ key: `race_wk_${this.state.seasonNumber}_${next.week}`, source: 'calendar', priority: 'high', title: `Race weekend: ${next.race.name}`, body: 'This weekend. Get the bike and the body ready.', actionTarget: { screen: 'week' }, expiresDay: dayOfWeek + 7, icon: '🏁' });
+    } else if (weeksOut <= 2) {
+      this.notify({ key: `reg_${this.state.seasonNumber}_${next.week}`, source: 'calendar', priority: 'normal', title: `Registration: ${next.race.name}`, body: `${weeksOut} week${weeksOut === 1 ? '' : 's'} out. Lock in your plan.`, actionTarget: { screen: 'week' }, expiresDay: dayOfWeek, icon: '📅' });
+    }
   }
 
   // Parent-mode race prep: a support stance (mapped to a race strategy) and an
@@ -500,6 +533,75 @@ export class Game {
     }
     return created;
   }
+
+  // ---- Phone / Internet hub + notifications (issues #34/#40/#73/#74) -------
+  // The game's current day-index (season-aware), used to timestamp notifications.
+  get dayIndex() { return (this.state.seasonNumber - 1) * 84 + (this.week - 1) * 7; }
+
+  // Raise a phone notification (issue #74). `key` de-dupes if provided.
+  notify({ key = null, ...input } = {}) {
+    const n = { day: this.dayIndex, ...input };
+    return key != null ? this.notifications.addOnce(key, n) : this.notifications.add(n);
+  }
+
+  phoneCtx() { return { age: this.rider.age, campaign: this.campaign }; }
+
+  // Apps for the phone home screen, with access gating + unread badges (#73).
+  phoneApps() {
+    const unread = this.notifications.unreadBySource(this.dayIndex);
+    const badges = {
+      calendar: unread.calendar ?? 0,
+      marketplace: unread.marketplace ?? 0,
+      dealer: unread.dealer ?? 0,
+      memories: unread.memory ?? 0,
+      results: unread.competition ?? 0,
+      news: unread.news ?? 0,
+      messages: (unread.family ?? 0) + (unread.sponsor ?? 0),
+      garage: unread.garage ?? 0,
+    };
+    return buildPhoneApps(this.phoneCtx(), badges);
+  }
+  phoneAccess(appId) { return canAccess(appId, this.phoneCtx()); }
+
+  // ---- Garage view models + listing flow (issues #75/#76) -----------------
+  garageView() {
+    return buildGarageView({
+      activeBike: this.bike,
+      bikes: this.state.garage.bikes ?? [],
+      objects: this.state.garage.objects ?? [],
+      parts: this.state.garage.parts ?? [],
+      registry: this.assets,
+      memories: this.state.memories,
+    });
+  }
+
+  // List a garaged (non-active) bike on the used marketplace (#76).
+  createListingDraft(assetId, { price = 0, notes = '' } = {}) {
+    const bike = (this.state.garage.bikes ?? []).find((b) => b.assetId === assetId);
+    if (!bike) return null;
+    const prov = this.assets.ensure(bike, { kind: 'bike' });
+    const draft = makeListingDraft(bike, { prov, askingPrice: price, conditionNotes: notes });
+    publishListing(draft);
+    bike.forSale = true;
+    this.state.market.drafts.push(draft);
+    this.notify({ source: 'marketplace', priority: 'normal', title: `Listed: ${bike.name}`, body: `Asking $${draft.askingPrice}.`, actionTarget: { screen: 'market' }, icon: '🛒' });
+    return draft;
+  }
+
+  // Complete a listed sale: money in, bike out of the garage, memory + provenance (#76).
+  completeListingSale(draftId, { buyerId = 'a local family', price = null } = {}) {
+    const draft = (this.state.market.drafts ?? []).find((d) => d.id === draftId);
+    if (!draft || draft.state === 'sold') return null;
+    const prov = this.assets.get(draft.assetId);
+    const sale = completeSale(draft, { buyerId, price, prov, year: this.seasonYear });
+    if (!sale) return null;
+    this.state.garage.bikes = (this.state.garage.bikes ?? []).filter((b) => b.assetId !== draft.assetId);
+    this.addMoney(sale.price);
+    this.fireMemoryTriggers('asset:sold', { kind: 'bike', assetId: draft.assetId, name: draft.name, eventId: draft.assetId });
+    this.notify({ source: 'marketplace', priority: 'high', title: `Sold: ${draft.name}`, body: `+$${sale.price} from ${buyerId}.`, actionTarget: { screen: 'market' }, icon: '💰' });
+    return sale;
+  }
+
   // Swap a garaged bike in as the active race bike; the old one goes to storage.
   setRaceBike(assetId) {
     const list = this.state.garage.bikes ?? [];

@@ -265,7 +265,7 @@ export class App {
       ['week', '📅', 'Week'],
       ['stats', '📊', 'Stats'],
       ['garage', '🏠', 'Garage'],
-      ['market', '📱', 'Market'],
+      ['phone', '📱', 'Phone'],
       ['sponsors', '💰', 'Sponsors'],
       ['people', '👥', 'People'],
       ['journal', '📓', 'Journal'],
@@ -288,6 +288,7 @@ export class App {
       case 'stats': return this.renderStatsTab();
       case 'sponsors': return this.renderSponsorsTab();
       case 'garage': return this.renderGarage();
+      case 'phone': return this.renderPhone();
       case 'market': return this.renderMarket();
       case 'people': return this.renderPeople();
       case 'journal': return this.renderJournal();
@@ -1260,7 +1261,14 @@ export class App {
               this.bikeProvenanceLine(bk),
               this.renderPartBars(bk, true),
             ),
-            bk.role !== 'race' ? el('button', { class: 'btn small', onclick: () => { g.setRaceBike(bk.assetId); this._flash(`${bk.name} is now your race bike.`); this.render(); } }, 'Make race bike') : el('span', { class: 'faint small' }, 'Active'),
+            bk.role !== 'race'
+              ? el('div', { class: 'bike-actions' },
+                  el('button', { class: 'btn small', onclick: () => { g.setRaceBike(bk.assetId); this._flash(`${bk.name} is now your race bike.`); this.render(); } }, 'Make race bike'),
+                  bk.forSale
+                    ? el('span', { class: 'faint small' }, '🏷️ Listed')
+                    : el('button', { class: 'btn small ghost', onclick: () => this.listBikeForSale(bk) }, 'List for sale'),
+                )
+              : el('span', { class: 'faint small' }, 'Active'),
           );
         }),
       ) : null,
@@ -1276,6 +1284,20 @@ export class App {
           : el('div', { class: 'empty' }, 'Nothing here carries a story yet.'),
       ),
     );
+  }
+
+  // List a garaged bike on the used marketplace with a suggested price (#76).
+  listBikeForSale(bk) {
+    const g = this.game;
+    // Suggest a value from condition; the player can accept or name their own.
+    const suggested = Math.max(150, Math.round((bk.condition ?? 60) * 8 + 200));
+    const input = typeof prompt === 'function' ? prompt(`List ${bk.name} — asking price?`, String(suggested)) : String(suggested);
+    if (input == null) return;
+    const price = Math.max(0, parseInt(input, 10) || suggested);
+    const draft = g.createListingDraft(bk.assetId, { price, notes: `${bk.klass}, condition ${bk.condition}.` });
+    if (draft) this._flash(`Listed ${bk.name} for $${draft.askingPrice}. Check the Phone → Marketplace.`);
+    this.saveGame();
+    this.render();
   }
 
   // A bike's provenance + linked-memory count (issue #69).
@@ -1308,6 +1330,74 @@ export class App {
     },
       el('span', { class: 'mk-emoji' }, emoji),
       listing.rare ? el('span', { class: 'mk-badge' }, 'RARE') : null,
+    );
+  }
+
+  // ---- Phone / Internet hub (issues #34/#40/#73/#74) ----------------------
+  renderPhone() {
+    const g = this.game;
+    // In-phone apps route here; others jump to their existing tab.
+    if (this._phoneApp === 'marketplace' && g.phoneAccess('marketplace').ok) return this.renderMarket();
+    if (this._phoneApp === 'notifications') return this.renderNotifications();
+    if (this._phoneApp && ['messages', 'dealer', 'social'].includes(this._phoneApp)) return this.renderPhoneStub(this._phoneApp);
+
+    const apps = g.phoneApps();
+    const unread = g.notifications.unreadCount(g.dayIndex);
+    const tabFor = { garage: 'garage', results: 'journal', memories: 'journal', news: 'journal' };
+    const openApp = (app) => {
+      const acc = g.phoneAccess(app.id);
+      if (!acc.ok) { this._flash(acc.lockReason ?? acc.reason ?? 'Not available yet.'); return; }
+      if (app.id === 'calendar') { this.tab = 'week'; this._seasonView = true; this.render(); return; }
+      if (tabFor[app.id]) { this.tab = tabFor[app.id]; this.render(); return; }
+      this._phoneApp = app.id; this.render();
+    };
+    return el('div', { class: 'phone' },
+      el('div', { class: 'phone-top' },
+        el('div', {}, el('b', {}, '📱 ' + (g.isParent ? 'Your Phone' : `${g.rider.name}'s Phone`)),
+          el('div', { class: 'small faint' }, g.phoneCtx().campaign === 'parent' ? 'Full access' : `Age ${g.rider.age} · ${g.phoneApps()[0].tier} access`)),
+        el('button', { class: 'phone-bell' + (unread ? ' has' : ''), onclick: () => { this._phoneApp = 'notifications'; this.render(); } },
+          '🔔', unread ? el('span', { class: 'bell-badge' }, String(unread)) : null),
+      ),
+      el('div', { class: 'app-grid' },
+        ...apps.map((app) => el('button', { class: 'app-icon' + (app.accessible ? '' : ' locked'), onclick: () => openApp(app) },
+          el('span', { class: 'ai-glyph' }, app.icon),
+          app.unread ? el('span', { class: 'ai-badge' }, String(app.unread)) : null,
+          app.accessible ? null : el('span', { class: 'ai-lock' }, '🔒'),
+          el('span', { class: 'ai-label' }, app.name),
+          app.needsApproval ? el('span', { class: 'ai-approve' }, 'ask a parent') : null,
+        )),
+      ),
+    );
+  }
+
+  renderNotifications() {
+    const g = this.game;
+    const items = g.notifications.active(g.dayIndex);
+    return el('div', { class: 'phone' },
+      el('div', { class: 'phone-appbar' },
+        el('button', { class: 'btn ghost small', onclick: () => { this._phoneApp = null; this.render(); } }, '‹ Phone'),
+        el('b', {}, '🔔 Notifications'),
+        el('button', { class: 'btn ghost small', onclick: () => { g.notifications.markAllRead(); this.saveGame(); this.render(); } }, 'Mark all read'),
+      ),
+      items.length
+        ? el('div', { class: 'card' }, ...items.map((n) => el('div', { class: 'ntf' + (n.read ? '' : ' unread'), onclick: () => { g.notifications.markRead(n.id); if (n.actionTarget?.screen) { this._phoneApp = null; this.tab = n.actionTarget.screen; } this.render(); } },
+            el('div', { class: 'ntf-icon' }, n.icon ?? '•'),
+            el('div', { class: 'ntf-body' }, el('div', { class: 'ntf-title' }, n.title), n.body ? el('div', { class: 'small muted' }, n.body) : null),
+            n.read ? null : el('span', { class: 'ntf-dot' }))))
+        : el('div', { class: 'card empty' }, 'All quiet. No notifications.'),
+    );
+  }
+
+  renderPhoneStub(appId) {
+    const g = this.game;
+    const info = { messages: ['💬 Messages', 'Threads with family, coaches, sponsors, and sellers live here.'], dealer: ['🏪 Dealer', 'Order new OEM parts and gear to the garage.'], social: ['📱 Social', 'Post, follow riders, and build sponsor value.'] }[appId];
+    return el('div', { class: 'phone' },
+      el('div', { class: 'phone-appbar' },
+        el('button', { class: 'btn ghost small', onclick: () => { this._phoneApp = null; this.render(); } }, '‹ Phone'),
+        el('b', {}, info[0]),
+        el('span', {}),
+      ),
+      el('div', { class: 'card' }, el('p', { class: 'muted' }, info[1]), el('p', { class: 'small faint' }, 'Coming soon to the paddock.')),
     );
   }
 
@@ -1361,12 +1451,34 @@ export class App {
       : el('div', { class: 'card' }, el('div', { class: 'empty' }, 'Nothing listed right now. Use the "Browse the marketplace" activity during your week to refresh the board.'));
 
     return el('div', {},
+      this._phoneApp === 'marketplace' ? el('button', { class: 'btn ghost small', onclick: () => { this._phoneApp = null; this.render(); } }, '‹ Phone') : null,
       header,
       el('div', { class: 'mk-titlebar' },
         el('h2', { style: 'margin:0' }, "Today's Picks"),
         el('button', { class: 'btn ghost small', onclick: () => { g.market.refresh(true); this.render(); } }, '🔄 Refresh'),
       ),
       grid,
+      this.myListingsSection(),
+    );
+  }
+
+  // "Your Listings" — garage bikes you've put up for sale (issue #76).
+  myListingsSection() {
+    const g = this.game;
+    const drafts = (g.state.market.drafts ?? []).filter((d) => d.state === 'listed');
+    if (!drafts.length) return null;
+    return el('div', { class: 'card' },
+      el('h3', {}, '🏷️ Your Listings'),
+      ...drafts.map((d) => el('div', { class: 'my-listing' },
+        el('div', {},
+          el('b', {}, d.name), ' ', el('span', { class: 'faint small' }, `$${d.askingPrice}`),
+          d.provenanceSummary ? el('div', { class: 'small faint' }, `📜 ${d.provenanceSummary}${d.memoryRefs.length ? ` · ${d.memoryRefs.length} 💭` : ''}`) : null,
+          d.conditionNotes ? el('div', { class: 'small muted' }, `"${d.conditionNotes}"`) : null,
+        ),
+        el('div', { class: 'listing-actions' },
+          el('button', { class: 'btn small primary', onclick: () => { const s = g.completeListingSale(d.id); if (s) this._flash(`Sold ${d.name} for $${s.price}.`); this.saveGame(); this.render(); } }, 'Accept a buyer'),
+        ),
+      )),
     );
   }
 
