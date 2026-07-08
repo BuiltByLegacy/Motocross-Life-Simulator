@@ -6,7 +6,7 @@
 
 import { Game, SIM_DEPTHS, ordinal } from './game.js';
 import { RACE_STRATEGIES, estimateForm } from './engines/raceEngine.js';
-import { SERIES } from './data/content.js';
+import { SERIES, CAMPS as CAMPS_REF } from './data/content.js';
 
 // tiny hyperscript helper
 function el(tag, props = {}, ...kids) {
@@ -215,7 +215,9 @@ export class App {
   // ---- Frame ---------------------------------------------------------------
   render() {
     const g = this.game;
-    const content = this.tab === 'week' ? this.weekContent() : this.renderTab();
+    const content = this.tab === 'week'
+      ? (this._seasonView ? this.viewSeasonBoard() : this.weekContent())
+      : this.renderTab();
     const view = el('div', { class: 'screen' },
       el('div', { class: 'sticky-head' },
         this.renderTopbar(),
@@ -330,6 +332,7 @@ export class App {
   showWeek(fn) {
     this.weekContent = fn;
     this.tab = 'week';
+    this._seasonView = false;
     this.render();
   }
 
@@ -346,10 +349,17 @@ export class App {
   handlePlanning() {
     const g = this.game;
     if (g.depth.autoPlan) {
+      // Auto: attend a day camp on camp weeks if affordable.
+      if (g.meta()?.camp && g.family.money > 500) {
+        const r = g.attendCamp('day');
+        if (r.ok) this.digest.push({ type: 'camp', ...r });
+      }
       const picks = g.autoPlan();
       const results = g.runSchedule(picks);
       this.digest.push({ type: 'plan', results, auto: true });
       this.handleScenario();
+    } else if (!g.isParent && g.meta()?.camp && this._campWeek !== g.week) {
+      this.showWeek(() => this.viewCampChoice());
     } else if (g.isParent) {
       this.plannerSel = [];
       this.showWeek(() => this.viewPlanner());
@@ -488,6 +498,69 @@ export class App {
     );
   }
 
+  // ---- Camp choice (issue #5) ---------------------------------------------
+  viewCampChoice() {
+    const g = this.game;
+    const meta = g.meta();
+    const decide = (id) => {
+      this._campWeek = g.week;
+      if (id !== 'skip') {
+        const r = g.attendCamp(id);
+        this.digest.push({ type: 'camp', ...r });
+        if (id === 'week' && r.ok) { this.handleScenario(); return; } // week camp eats the week
+      }
+      this.boardSel = {};
+      this._pickingSlot = null;
+      this.showWeek(() => this.viewWeekBoard());
+    };
+    return el('div', {},
+      el('div', { class: 'card' },
+        el('div', { class: 'eyebrow' }, '🏕️ Summer Camp'),
+        el('h2', {}, meta.title.replace(' · 🏕️ Camp', '')),
+        el('p', { class: 'muted' }, 'A training camp is running this week. Camps are the fastest way to get better — for a price.'),
+        el('button', { class: 'choice', onclick: () => decide('week') },
+          el('b', {}, `🏕️ Week-long camp — $${CAMPS_REF.week.cost}`),
+          el('div', { class: 'tip' }, CAMPS_REF.week.desc + ' (uses the whole week)'),
+        ),
+        el('button', { class: 'choice', onclick: () => decide('day') },
+          el('b', {}, `📋 Day camp — $${CAMPS_REF.day.cost}`),
+          el('div', { class: 'tip' }, CAMPS_REF.day.desc + ' (you still plan the rest of the week)'),
+        ),
+        el('button', { class: 'choice', onclick: () => decide('skip') },
+          el('b', {}, '🚫 Skip the camp'),
+          el('div', { class: 'tip' }, 'Save the money and train on your own this week.'),
+        ),
+      ),
+    );
+  }
+
+  // ---- Season / monthly calendar (issue #5) -------------------------------
+  viewSeasonBoard() {
+    const g = this.game;
+    const cal = g.state.calendar;
+    return el('div', {},
+      el('div', { class: 'card' },
+        el('div', { class: 'eyebrow' }, `${g.series.icon} ${g.series.label} · ${g.seasonYear}`),
+        el('div', { style: 'display:flex;justify-content:space-between;align-items:center' },
+          el('h2', { style: 'margin:0' }, 'Season Calendar'),
+          el('button', { class: 'btn ghost small', onclick: () => { this._seasonView = false; this.render(); } }, '📅 This week'),
+        ),
+        el('p', { class: 'small faint' }, 'Your year at a glance. Races are fixed; camps are yours to attend or skip.'),
+        el('div', { class: 'season-grid' },
+          ...cal.map((c) => {
+            const isNow = c.week === g.week;
+            const kind = c.race ? 'race' : c.camp ? 'camp' : 'open';
+            return el('div', { class: 'season-cell ' + kind + (isNow ? ' now' : '') },
+              el('div', { class: 'sc-week' }, 'Wk ' + c.week + (isNow ? ' • now' : '')),
+              el('div', { class: 'sc-title' }, c.race ? '🏁 ' + c.race.name : c.camp ? '🏕️ Camp week' : c.title),
+              c.race ? el('div', { class: 'sc-sub' }, `${c.race.riders} riders`) : null,
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
   // ---- 7-day week board (issue #5) ----------------------------------------
   viewWeekBoard() {
     const g = this.game;
@@ -511,7 +584,10 @@ export class App {
 
     return el('div', {},
       el('div', { class: 'card' },
-        el('div', { class: 'eyebrow' }, meta.race ? '🏁 Race Week' : `${g.seasonYear} · Week ${g.week}`),
+        el('div', { style: 'display:flex;justify-content:space-between;align-items:center' },
+          el('div', { class: 'eyebrow' }, meta.race ? '🏁 Race Week' : `${g.seasonYear} · Week ${g.week}`),
+          el('button', { class: 'btn ghost small', onclick: () => { this._seasonView = true; this.render(); } }, '🗓️ Season'),
+        ),
         el('h2', {}, meta.title),
         el('p', { class: 'muted small' }, meta.race
           ? `${meta.race.name} is this weekend. Fill the week to get ready.`
@@ -901,6 +977,11 @@ export class App {
     }
     if (d.type === 'missed') {
       return el('div', { class: 'digest-item' }, el('span', { style: 'color:var(--red)' }, `🚑 Missed ${d.race.name} — injured (${d.injury.name}).`));
+    }
+    if (d.type === 'camp') {
+      return el('div', { class: 'digest-item' },
+        el('div', {}, `${d.icon} `, el('b', {}, d.name), ' — ', el('span', { class: 'muted' }, d.outcome)),
+      );
     }
     return null;
   }

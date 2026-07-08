@@ -8,7 +8,7 @@
 import { RNG } from './core/rng.js';
 import { EventBus } from './core/eventBus.js';
 import { createInitialState } from './core/state.js';
-import { ACTIVITIES, ACTIVITIES_PARENT, CLASS_FOR_AGE, BIKE_FOR_CLASS, ELIGIBLE_CLASSES, buildSchedule, SERIES } from './data/content.js';
+import { ACTIVITIES, ACTIVITIES_PARENT, CLASS_FOR_AGE, BIKE_FOR_CLASS, ELIGIBLE_CLASSES, buildSchedule, SERIES, CAMPS } from './data/content.js';
 import { MemoryEngine } from './engines/memoryEngine.js';
 import { RelationshipEngine } from './engines/relationshipEngine.js';
 import { WorldEngine } from './engines/worldEngine.js';
@@ -227,6 +227,19 @@ export class Game {
 
   planningSlots() {
     return this.isRaceWeek() ? 1 : 2;
+  }
+
+  // Attend a training camp on a camp week (issue #5).
+  attendCamp(id) {
+    const camp = CAMPS[id];
+    if (!camp) return { ok: false, outcome: 'No such camp.' };
+    if (!this.spend(camp.cost)) {
+      this.stress(3);
+      return { ok: false, outcome: `Couldn't afford the $${camp.cost} camp fee.` };
+    }
+    const outcome = camp.apply(this);
+    this.log(`${camp.icon} ${camp.label}: ${outcome}`);
+    return { ok: true, name: camp.label, icon: camp.icon, outcome };
   }
 
   activitySet() {
