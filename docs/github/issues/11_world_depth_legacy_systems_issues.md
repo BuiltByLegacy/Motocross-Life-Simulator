@@ -1,3 +1,28 @@
+# World Depth & Legacy Systems Issue Drafts
+
+Documentation-only GitHub issue drafts for the next major world depth and legacy systems in **Motocross: Chasing the Dream**. These drafts are intentionally self-contained so they can be copied into GitHub issues later without calling the GitHub API or implementing gameplay.
+
+## Draft Index
+
+1. Design Dynamic Motocross World System
+2. Design AI Family Simulation System
+3. Design Dynamic Economy System
+4. Design Personality Engine
+5. Design Group Reputation System
+6. Design Dynamic Media System
+7. Expand Family Memory System
+8. Expand Garage Museum System
+9. Design Home Life System
+10. Design Dynamic Opportunity Engine
+11. Design Mechanical Knowledge Progression
+12. Design Legacy After Retirement System
+13. Design Dynamic Weather System
+14. Design Living Track Surface System
+15. Design Hall of Fame and Career Records System
+16. Design Multiple Career Endings System
+17. Design Documentary Engine
+18. Update Design Decision Log
+
 # Issue: Design Dynamic Motocross World System
 
 ## What
