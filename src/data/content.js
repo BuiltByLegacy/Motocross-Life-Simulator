@@ -1700,8 +1700,47 @@ export function buildSchedule(seriesKey) {
         12: ['Season Finale', 'The season is over. Time to look back.'],
       };
       const [title, note] = titles[week] ?? ['Midweek', 'A quieter week.'];
-      cal.push({ week, title, note });
+      const entry = { week, title, note };
+      // Summer training camps land on a couple of open weeks (issue #5).
+      if (week === 4 || week === 8) { entry.camp = true; entry.title = title + ' · 🏕️ Camp'; }
+      cal.push(entry);
     }
   }
   return cal;
 }
+
+// Training camps you can choose to attend on camp weeks (issue #5).
+export const CAMPS = {
+  week: {
+    id: 'week', label: 'Week-long camp', icon: '🏕️', cost: 350,
+    desc: 'Five days at a pro training facility. Huge gains — but it eats the whole week and the wallet.',
+    apply(g) {
+      g.skill('cornering', g.rng.int(3, 5));
+      g.skill('jumping', g.rng.int(2, 4));
+      g.skill('whoops', g.rng.int(2, 4));
+      g.skill('raceIQ', g.rng.int(2, 4));
+      g.skill('consistency', g.rng.int(1, 3));
+      g.skill('fitness', g.rng.int(2, 4));
+      g.confidence(6);
+      g.fatigue(18);
+      g.rel('coach_mike').change('belief', 5);
+      g.memory.record({
+        type: 'personal', title: 'Summer Camp',
+        summary: 'A week at a real training facility, riding with kids far faster than you. You came home a different rider.',
+        emotion: ['growth', 'exhaustion'], tags: ['training', 'milestone'], importance: 66, force: true,
+      });
+      return 'Five days, dawn to dark, chasing faster kids. Brutal — and it worked.';
+    },
+  },
+  day: {
+    id: 'day', label: 'Day camp', icon: '📋', cost: 90,
+    desc: 'A one-day clinic with a coach. Solid gains, easy on the budget.',
+    apply(g) {
+      g.skill(g.rng.pick(['cornering', 'jumping', 'whoops', 'raceIQ']), g.rng.int(2, 3));
+      g.skill('consistency', 1);
+      g.confidence(2);
+      g.fatigue(6);
+      return 'A focused day with a coach. You left with one thing fixed and a plan.';
+    },
+  },
+};
