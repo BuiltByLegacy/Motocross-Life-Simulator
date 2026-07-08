@@ -201,59 +201,6 @@ async function ensureLabel({ repo, label, token, cache }) {
   cache.add(label);
   console.log(`Created missing label: ${label}`);
   await sleep(250);
-async function githubRequest(endpoint, { method = 'GET', body, token }) {
-  const response = await fetch(`${API_ROOT}${endpoint}`, {
-    method,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'motocross-life-simulator-issue-importer',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    throw new Error(`GitHub API ${method} ${endpoint} failed (${response.status}): ${data?.message || text}`);
-  }
-
-  return data;
-}
-
-async function ensureLabel({ repo, label, token, cache }) {
-  if (cache.has(label)) return;
-
-  const encodedLabel = encodeURIComponent(label);
-  try {
-    await githubRequest(`/repos/${repo}/labels/${encodedLabel}`, { token });
-  } catch (error) {
-    if (!error.message.includes('failed (404)')) {
-      throw error;
-    }
-
-    await githubRequest(`/repos/${repo}/labels`, {
-      method: 'POST',
-      token,
-      body: {
-        name: label,
-        color: '5319e7',
-        description: 'Created automatically by the Markdown issue draft importer.',
-      },
-    });
-    console.log(`Created missing label: ${label}`);
-  }
-
-  cache.add(label);
-}
-
-async function findExistingIssue({ repo, title, token }) {
-  const query = encodeURIComponent(`repo:${repo} is:issue in:title "${title.replace(/"/g, '\\"')}"`);
-  const data = await githubRequest(`/search/issues?q=${query}&per_page=10`, { token });
-  return data.items?.find((issue) => issue.title === title) || null;
 }
 
 async function main() {
@@ -291,9 +238,6 @@ async function main() {
       continue;
     }
 
-  const labelCache = new Set();
-
-  for (const issue of issues) {
     for (const label of issue.labels) {
       await ensureLabel({ repo, label, token, cache: labelCache });
     }
@@ -303,27 +247,16 @@ async function main() {
       token,
       retries: 3,
       retryDelayMs: 1000,
-    if (args.duplicateMode === 'skip') {
-      const existing = await findExistingIssue({ repo, title: issue.title, token });
-      if (existing) {
-        console.log(`Skipped existing issue #${existing.number}: ${issue.title}`);
-        continue;
-      }
-    }
-
-    const created = await githubRequest(`/repos/${repo}/issues`, {
-      method: 'POST',
-      token,
       body: {
         title: issue.title,
         body: issue.body,
         labels: issue.labels,
       },
     });
+
     existingIssueTitles.add(issue.title);
     console.log(`Created issue #${created.number}: ${created.title}`);
     await sleep(500);
-    console.log(`Created issue #${created.number}: ${created.title}`);
   }
 }
 
