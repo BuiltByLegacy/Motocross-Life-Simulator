@@ -1,11 +1,11 @@
-# Legacy: Motocross
+# Motocross: Chasing the Dream
 
-> **Create a life worth remembering.**
+> **Every rider has a story. Chase yours.**
 
 A **sports life-simulation RPG** prototype from Legacy Studios. This is not a
-racing game — it's a game about *living* a motocross life: the late-night engine
-rebuilds, the family sacrifices, the rivals, the first podium, and the memories
-that outlast the results.
+racing game — it's a game about chasing a dream and *living* a motocross life:
+the late-night engine rebuilds, the family sacrifices, the rivals, the first
+podium, and the memories that outlast the results.
 
 This repo contains **playable prototype v0.2**: a saveable, multi-season youth
 motocross career that can start as early as age 4 on a 50cc and grow through
@@ -13,6 +13,8 @@ class progression, plus the full design bible
 that defines the larger game.
 
 **Studio motto:** Build memories, not mechanics.
+
+**Studio mission:** Creating interactive lives worth remembering.
 
 ---
 
@@ -133,4 +135,4 @@ adult/pro careers are specified in `design/` and are future work.
 
 ---
 
-*Legacy Studios · Prototype v0.2 · We create interactive lives worth remembering.*
+*Legacy Studios · Prototype v0.2 · Creating interactive lives worth remembering.*

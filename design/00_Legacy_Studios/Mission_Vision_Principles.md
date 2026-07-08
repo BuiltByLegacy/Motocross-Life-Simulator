@@ -1,81 +1,209 @@
-# Legacy Studios - Mission, Vision, and Principles
+# Legacy Studios
 
 ## Mission
 
-**We create interactive lives worth remembering.**
+**Creating interactive lives worth remembering.**
 
-Legacy Studios does not simply make sports games. It creates believable lives, emotional journeys, and stories players remember long after they stop playing.
+---
 
-## Vision
+# Vision
 
-To become the world's leading creator of sports life simulations by building living worlds where every person, object, place, and decision contributes to a unique and memorable life story.
+To become the world's leading creator of sports life simulations by building living worlds where every person, every relationship, every object, and every decision contributes to a unique life story.
 
-## Studio Motto
+We don't build games about winning championships.
+
+We build games about chasing dreams.
+
+---
+
+# Our First Game
+
+# Motocross: Chasing the Dream
+
+## Tagline
+
+> **Every rider has a story. Chase yours.**
+
+---
+
+# The Promise
+
+Every rider's journey is different.
+
+Some riders become champions.
+
+Some become local legends.
+
+Some become mechanics.
+
+Some become coaches.
+
+Some walk away from the sport.
+
+Some never make it past their first injury.
+
+Every path is valid.
+
+Every life matters.
+
+Every story deserves to be remembered.
+
+---
+
+# What We Believe
+
+We believe the greatest moments in sports are rarely the trophies.
+
+They're the sacrifices.
+
+The friendships.
+
+The heartbreak.
+
+The late nights in the garage.
+
+The road trips.
+
+The parents who gave everything.
+
+The rivals who pushed us.
+
+The memories that stay with us forever.
+
+That is the experience we are building.
+
+---
+
+# Our Philosophy
+
+The player is not chasing championships.
+
+The player is chasing a dream.
+
+Championships may happen.
+
+Factory rides may happen.
+
+Heartbreak may happen.
+
+But the dream is always worth chasing.
+
+---
+
+# The Legacy Principles
+
+## People Before Players
+
+Every character deserves a believable life.
+
+---
+
+## Memories Matter More Than Rewards
+
+Players remember stories, not statistics.
+
+---
+
+## Earn Every Moment
+
+Nothing meaningful should be handed to the player.
+
+---
+
+## Authenticity Before Convenience
+
+If realism creates better stories, realism wins.
+
+---
+
+## The World Doesn't Revolve Around You
+
+The world continues whether you succeed or fail.
+
+---
+
+## Everything Has History
+
+People.
+
+Places.
+
+Objects.
+
+Relationships.
+
+Everything remembers.
+
+---
+
+## Decisions Echo
+
+Every meaningful decision should influence the future.
+
+---
+
+## Respect the Family
+
+Parents are heroes too.
+
+---
+
+## Design for Emotion
+
+Every feature should begin with one question:
+
+> "How should this make the player feel?"
+
+---
+
+## Leave a Legacy
+
+The game never asks:
+
+> "Did you win?"
+
+Instead it asks:
+
+> "What kind of life did you build?"
+
+---
+
+# The Legacy Test
+
+Every feature must answer YES to these questions.
+
+- Is it authentic?
+- Does it create memories?
+- Does it create meaningful decisions?
+- Does it tell a story?
+- Will different players experience it differently?
+
+If not...
+
+Redesign it.
+
+---
+
+# Our North Star
+
+When a player finishes a career, we don't want them to tell their friends about a game.
+
+We want them to tell their friends about a life.
+
+If someone says...
+
+> "I'll never forget when my dad stayed up until 2 AM rebuilding my bike before Loretta."
+
+or
+
+> "I still have my first helmet hanging in my garage because I could never bring myself to sell it."
+
+Then we've succeeded.
+
+---
+
+# Studio Motto
 
 **Build memories, not mechanics.**
 
-Mechanics exist to create memories.
-
-## The Legacy Promise
-
-We promise to respect the people who live this world.
-
-We will honor the sacrifices, friendships, failures, victories, and memories that define their journey.
-
-We will build worlds that feel alive, characters who feel human, and stories that feel earned.
-
-We believe the greatest reward is not a trophy or a statistic.
-
-It is a life worth remembering.
-
-## The Legacy Principles
-
-### 1. People Before Players
-Every character should feel like a real person. Parents have dreams. Rivals have fears. Coaches have families. Mechanics have bad days.
-
-### 2. Memories Matter More Than Rewards
-Players will not remember `+5 Speed`. They will remember Dad rebuilding the engine until 2 AM.
-
-### 3. Earn Every Moment
-Every championship, sponsor, friendship, heartbreak, garage expansion, and factory ride should feel earned.
-
-### 4. Authenticity Before Convenience
-If something is harder to build but feels more authentic, favor authenticity. The goal is for real motocross families to say: "That's exactly how it feels."
-
-### 5. The World Does Not Revolve Around You
-Rivals improve. Parents age. Tracks close. Factories change. Friends quit. Life goes on.
-
-### 6. Everything Has History
-People, bikes, tracks, toolboxes, helmets, garages, campers, trophies, and places all carry history.
-
-### 7. Decisions Echo
-No meaningless choices. Some consequences happen immediately. Some echo years later.
-
-### 8. Respect the Family
-Parents are not side characters. They are often the reason a career exists at all.
-
-### 9. Design for Emotion
-Before adding a feature, define the emotion it should create.
-
-### 10. Leave a Legacy
-The game should not simply ask, "Did you win?" It should ask, "What kind of life did you build?"
-
-## Design Filter
-
-Every feature must answer yes to these five questions:
-
-1. Is it authentic?
-2. Does it create memories?
-3. Does it create meaningful decisions?
-4. Does it tell a story?
-5. Will different players experience it differently?
-
-If the answer to any question is no, redesign the feature.
-
-## The Legacy Test
-
-Before any feature is approved, ask:
-
-**Could this make a player say, "I'll never forget when..."?**
-
-If not, it probably does not belong.
+Everything else follows from that.
