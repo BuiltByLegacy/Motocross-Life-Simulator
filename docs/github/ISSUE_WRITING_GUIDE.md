@@ -18,6 +18,11 @@ Describe the recommended approach, constraints, references, and links.
 List the exact evidence that proves the issue is complete.
 ```
 
+
+## Required epic cleanup standard
+
+Use `docs/github/ISSUE_ORGANIZATION_STANDARD.md` when performing a full issue cleanup pass. It defines the current epic system, label set, normal issue format, epic issue format, and topic-specific rules for Season Event Planner, Road to Loretta’s, nonlinear career progression, marketplace, dealer websites, and Phone / Internet UI issues.
+
 ## Writing for AI coding agents
 
 - Link the relevant epic, design spec, and source files.
