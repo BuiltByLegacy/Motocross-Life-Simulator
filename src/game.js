@@ -20,6 +20,8 @@ import { SeasonPlanner } from './systems/seasonPlanner.js';
 import { LorettasPath, classifyEvent } from './systems/lorettasPath.js';
 import { resolveResult, Standings } from './systems/raceResults.js';
 import { ClassProgression, MomentumTracker, RivalTracker } from './systems/competition.js';
+import { AssetRegistry, recordTransfer } from './systems/assetProvenance.js';
+import { MemoryTriggerRegistry, defaultTriggers } from './systems/memoryTriggers.js';
 import { RaceSession } from './engines/raceEngine.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
@@ -83,6 +85,12 @@ export class Game {
     this.standings = Standings.fromJSON(this.state.standings);
     this.momentum = MomentumTracker.fromJSON(this.state.momentum ?? { confidence: this.state.rider.confidence });
     this.rivals = RivalTracker.fromJSON(this.state.rivals);
+    // Memory Engine (issues #68–#72): asset provenance registry + automatic
+    // memory triggers. Hydrated from state, snapshotted at save.
+    this.assets = AssetRegistry.fromJSON(this.state.assets);
+    this.memTriggers = MemoryTriggerRegistry.fromJSON(this.state.memTriggers, defaultTriggers());
+    // Give the starting race bike a provenance record (issue #69).
+    if (this.state.bike) this.assets.ensure(this.state.bike, { kind: 'bike' });
 
     this.currentRace = null;
     this._weekLog = null;
@@ -164,6 +172,8 @@ export class Game {
     this.state.standings = this.standings.toJSON();
     this.state.momentum = this.momentum.toJSON();
     this.state.rivals = this.rivals.toJSON();
+    this.state.assets = this.assets.toJSON();
+    this.state.memTriggers = this.memTriggers.toJSON();
     return {
       v: 2,
       seed: this.rng.seed,
@@ -190,6 +200,8 @@ export class Game {
     g.standings = Standings.fromJSON(g.state.standings);
     g.momentum = MomentumTracker.fromJSON(g.state.momentum);
     g.rivals = RivalTracker.fromJSON(g.state.rivals);
+    g.assets = AssetRegistry.fromJSON(g.state.assets);
+    g.memTriggers = MemoryTriggerRegistry.fromJSON(g.state.memTriggers, defaultTriggers());
     return g;
   }
 
@@ -459,9 +471,34 @@ export class Game {
   trainBike() {
     return this.practiceBike() ?? this.bike;
   }
-  addBike(bike) {
+  addBike(bike, { via = 'purchase', gift = false, from = null, price = null, silent = false } = {}) {
     if (!this.state.garage.bikes) this.state.garage.bikes = [];
     this.state.garage.bikes.push(bike);
+    // Provenance always; an automatic "new bike" memory only for a genuinely
+    // new acquisition, not a bike moved into storage (issues #69/#70).
+    const prov = this.assets.ensure(bike, { kind: 'bike' });
+    if (!silent) {
+      this.fireMemoryTriggers('asset:acquired', {
+        kind: 'bike', assetId: bike.assetId, name: bike.name ?? bike.klass, via, gift, from, eventId: bike.assetId,
+      });
+    }
+    return prov;
+  }
+
+  // Run resolved-event memory triggers and record any memories they produce,
+  // linking asset-scoped memories back to their provenance record (issues #69/#70).
+  fireMemoryTriggers(eventType, payload = {}) {
+    const created = [];
+    for (const d of this.memTriggers.handle(eventType, payload, { rider: this.rider.name, campaign: this.campaign })) {
+      const mem = this.memory.record({ ...d, force: true });
+      if (!mem) continue;
+      created.push(mem);
+      for (const e of mem.entities ?? []) {
+        const prov = this.assets.get(e.id);
+        if (prov && !prov.memories.includes(mem.id)) prov.memories.push(mem.id);
+      }
+    }
+    return created;
   }
   // Swap a garaged bike in as the active race bike; the old one goes to storage.
   setRaceBike(assetId) {
@@ -864,7 +901,7 @@ export class Game {
     if (newClass !== this.rider.klass) {
       const old = this.bike;
       old.role = 'spare';
-      this.addBike(old); // keep the outgrown bike in the garage (issue #3)
+      this.addBike(old, { silent: true }); // keep the outgrown bike in the garage (issue #3)
       this.garage.objects.push({
         name: `${old.name} (first ${old.klass})`,
         memory: `Your ${old.klass} from ${old.year}. Outgrown, never forgotten.`,
@@ -880,6 +917,7 @@ export class Game {
       });
       this.rider.klass = newClass;
       this.state.bike = BIKE_FOR_CLASS(newClass, this.seasonYear - 1);
+      this.assets.ensure(this.state.bike, { kind: 'bike' }); // provenance for the new machine (#69)
     }
 
     // Natural maturation — kids get stronger as they grow.

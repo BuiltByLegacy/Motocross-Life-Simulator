@@ -7,6 +7,7 @@
 import { Game, SIM_DEPTHS, ordinal } from './game.js';
 import { RACE_STRATEGIES, estimateForm } from './engines/raceEngine.js';
 import { SERIES, CAMPS as CAMPS_REF, PART_INFO as PART_INFO_REF, RIDER_AVATARS as RIDER_AVATARS_REF, BACKGROUNDS as BACKGROUNDS_REF } from './data/content.js';
+import { provenanceSummary as provSummary } from './systems/assetProvenance.js';
 
 // tiny hyperscript helper
 function el(tag, props = {}, ...kids) {
@@ -1256,6 +1257,7 @@ export class App {
             el('div', { class: 'bike-info' },
               el('div', {}, el('b', {}, bk.name), ' ', el('span', { class: 'faint small' }, roleLabel)),
               el('div', { class: 'small faint' }, `${bk.klass} · cond ${bk.condition} · rel ${bk.reliability}`),
+              this.bikeProvenanceLine(bk),
               this.renderPartBars(bk, true),
             ),
             bk.role !== 'race' ? el('button', { class: 'btn small', onclick: () => { g.setRaceBike(bk.assetId); this._flash(`${bk.name} is now your race bike.`); this.render(); } }, 'Make race bike') : el('span', { class: 'faint small' }, 'Active'),
@@ -1274,6 +1276,15 @@ export class App {
           : el('div', { class: 'empty' }, 'Nothing here carries a story yet.'),
       ),
     );
+  }
+
+  // A bike's provenance + linked-memory count (issue #69).
+  bikeProvenanceLine(bk) {
+    const g = this.game;
+    const prov = g.assets?.get(bk.assetId);
+    if (!prov) return null;
+    const mem = prov.memories?.length ? ` · ${prov.memories.length} 💭` : '';
+    return el('div', { class: 'small faint', style: 'margin-top:2px' }, `📜 ${provSummary(prov)}${mem}`);
   }
 
   // Emoji + gradient "photo" per item — offline-safe listing images.
@@ -1459,12 +1470,7 @@ export class App {
           : el('div', { class: 'empty' }, 'No races yet.'),
         el('p', { class: 'small faint', style: 'margin-top:8px' }, `Total: ${g.state.season.points} points · Best finish ${g.state.season.bestFinish ? ordinal(g.state.season.bestFinish) : '—'}`),
       ),
-      el('div', { class: 'card' },
-        el('h3', {}, '💭 Memories'),
-        memories.length
-          ? el('div', {}, ...memories.map((m) => this.renderMemory(m)))
-          : el('div', { class: 'empty' }, 'No memories yet. They\'re coming.'),
-      ),
+      this.memoriesCard(),
       el('div', { class: 'card' },
         el('h3', {}, '🗞️ The World'),
         g.state.news.length
@@ -1474,11 +1480,51 @@ export class App {
     );
   }
 
+  // Memories card with timeline scope filters (issues #71/#72).
+  memoriesCard() {
+    const g = this.game;
+    const scope = this._memScope ?? 'all';
+    const scopes = [
+      ['all', '💭 All'],
+      ['family', '👨‍👩‍👧 Family'],
+      ['object', '🏍️ Bikes'],
+      ['racing', '🏁 Races'],
+    ];
+    // Map the friendly chips onto timeline queries (#72).
+    const q = scope === 'all' ? { sort: 'recent' }
+      : scope === 'family' ? { scope: 'family', sort: 'recent' }
+      : scope === 'object' ? { scope: 'object', sort: 'recent' }
+      : { tag: 'racing', sort: 'recent' };
+    let memories = g.memory.query(q);
+    if (scope === 'racing' && !memories.length) memories = g.memory.query({ source: 'race:finished', sort: 'recent' });
+    return el('div', { class: 'card' },
+      el('h3', {}, '💭 Memories'),
+      el('div', { class: 'goal-chips', style: 'margin-bottom:10px' },
+        ...scopes.map(([k, label]) =>
+          el('button', { class: 'goal-chip' + (scope === k ? ' on' : ''), onclick: () => { this._memScope = k; this.render(); } }, label)),
+      ),
+      memories.length
+        ? el('div', {}, ...memories.map((m) => this.renderMemory(m)))
+        : el('div', { class: 'empty' }, scope === 'all' ? 'No memories yet. They\'re coming.' : 'Nothing here yet.'),
+    );
+  }
+
   renderMemory(m) {
+    const g = this.game;
+    // People who were part of the moment, with how they helped (issue #71).
+    const parts = (m.participants ?? []).filter((p) => p.id && p.role !== 'other');
+    const nameFor = (id) => g.state.relationships?.[id]?.name ?? id;
+    const partLine = parts.length
+      ? parts.map((p) => nameFor(p.id) + (p.support ? ` (${p.support})` : '')).join(' · ')
+      : null;
+    const entLine = (m.entities ?? []).filter((e) => e.name).map((e) => `${e.kind === 'bike' ? '🏍️' : '📍'} ${e.name}`).join(' · ');
+    const seasonYear = g.state.startYear + (m.seasonNumber ?? 1) - 1;
     return el('div', { class: 'memory' },
       el('div', { class: 'm-title' }, m.title),
       el('div', { class: 'muted small' }, m.summary),
-      el('div', { class: 'm-meta' }, `Age ${m.riderAge} · Week ${m.week} · importance ${m.importance}`),
+      partLine ? el('div', { class: 'small', style: 'color:var(--amber-2);margin-top:2px' }, '👥 ' + partLine) : null,
+      entLine ? el('div', { class: 'small faint', style: 'margin-top:2px' }, entLine) : null,
+      el('div', { class: 'm-meta' }, `${seasonYear} · Age ${m.riderAge} · Wk ${m.week} · importance ${m.importance}`),
       m.tags?.length ? el('div', { class: 'tags', style: 'margin-top:3px' }, ...m.tags.slice(0, 5).map((t) => el('span', {}, t))) : null,
     );
   }

@@ -122,6 +122,8 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     standings: null, // season standings service state (issue #67)
     momentum: null, // confidence & momentum tracker (issue #66)
     rivals: null, // recurring-rival history (issue #65)
+    assets: null, // asset provenance registry (issue #69)
+    memTriggers: null, // automatic memory-trigger dedupe state (issue #70)
     seasonNumber: 1,
     startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
     _preparedWeek: 0, // guards once-per-week setup across save/load

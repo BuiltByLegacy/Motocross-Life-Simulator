@@ -8,6 +8,7 @@
 // (DD-0020) to decide which events are big enough to pause a fast playthrough.
 
 import { uid } from '../core/state.js';
+import { makeMemory, MemoryTimeline } from '../systems/memory.js';
 
 const KEEP_THRESHOLD = 45;
 
@@ -40,18 +41,14 @@ export class MemoryEngine {
     const shouldKeep = mem.force === true || importance >= KEEP_THRESHOLD;
     if (!shouldKeep) return null;
 
-    const record = {
+    // Normalize into the rich, queryable record model (issue #68/#71): entity
+    // links, participant roles/support, source refs, and a season-aware date.
+    const record = makeMemory({ ...mem, importance }, {
       id: uid('mem'),
-      type: mem.type ?? 'personal',
-      title: mem.title,
-      summary: mem.summary,
-      emotion: mem.emotion ?? [],
-      people: mem.people ?? [],
-      tags: mem.tags ?? [],
-      importance,
+      seasonNumber: this.game.state.seasonNumber,
       week: this.game.state.week,
       riderAge: this.game.state.rider.age,
-    };
+    });
     this.game.state.memories.push(record);
 
     // Shared memories echo into the relationships of everyone involved.
@@ -66,5 +63,13 @@ export class MemoryEngine {
 
   top(n = 6) {
     return [...this.game.state.memories].sort((a, b) => b.importance - a.importance).slice(0, n);
+  }
+
+  // Timeline query API over the career's memories (issue #72).
+  timeline() {
+    return new MemoryTimeline(this.game.state.memories);
+  }
+  query(opts = {}) {
+    return this.timeline().query(opts);
   }
 }
