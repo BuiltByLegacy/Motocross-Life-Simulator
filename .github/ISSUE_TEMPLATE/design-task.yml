@@ -1,0 +1,63 @@
+name: Design / Narrative Task
+description: Capture game design, worldbuilding, economy, progression, or narrative work.
+title: "[Design]: "
+labels: ["type: design", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for design work that should become clear enough for implementation later. Focus on **what**, **how**, and **definition of done**.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: Describe the design decision, content set, mechanic, or document update needed.
+      placeholder: |
+        Example: Define how regional sponsor offers scale from amateur to pro progression.
+    validations:
+      required: true
+
+  - type: textarea
+    id: design-goals
+    attributes:
+      label: Design goals
+      description: Explain the intended player experience and constraints.
+      placeholder: |
+        - Make sponsorship feel aspirational without becoming guaranteed income.
+        - Preserve risk/reward decisions around training, racing, and reputation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how
+    attributes:
+      label: How
+      description: Identify documents, systems, or data that should be updated.
+      placeholder: |
+        - Update sponsor engine design notes.
+        - Add examples for early, mid, and late career offers.
+        - Flag implementation impacts for content data and sponsor engine logic.
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of done
+      description: List concrete deliverables that make the issue complete.
+      placeholder: |
+        - [ ] Design document includes sponsor tiers, requirements, and rewards.
+        - [ ] Open questions are documented or resolved.
+        - [ ] Implementation follow-up issues are created if code changes are needed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Link related docs, issues, sketches, or inspiration.
+      placeholder: |
+        - design/02_Engines/Opportunity_Engine.md
+        - Related issue: #123

@@ -1,0 +1,73 @@
+name: Feature / Improvement
+description: Plan a new player-facing feature, simulation system, UI improvement, or content expansion.
+title: "[Feature]: "
+labels: ["type: feature", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to make the issue immediately actionable: define **what** should change, **why** it matters, **how** to approach it, and the **definition of done**.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: Describe the desired outcome in player/user terms. Keep this focused on the result, not implementation details.
+      placeholder: |
+        Example: Players should be able to compare used bikes in the marketplace before buying.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: Explain the player value, design goal, or problem this solves.
+      placeholder: |
+        Example: Choosing a bike is a high-impact career decision, so players need clear tradeoffs before spending money.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how
+    attributes:
+      label: How
+      description: Outline the likely approach, affected files/systems, and any implementation constraints.
+      placeholder: |
+        - Add comparison state to the marketplace UI.
+        - Surface bike condition, value, reliability, and performance deltas.
+        - Reuse existing marketplace data structures where possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of done
+      description: List observable acceptance criteria. Each item should be testable.
+      placeholder: |
+        - [ ] Player can select at least two marketplace bikes for comparison.
+        - [ ] Comparison shows price, condition, and performance tradeoffs.
+        - [ ] Existing purchase flow still works after comparing bikes.
+        - [ ] Relevant docs or roadmap notes are updated if the design changes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: edge-cases
+    attributes:
+      label: Edge cases / risks
+      description: Note known failure modes, tricky interactions, or scope boundaries.
+      placeholder: |
+        - Empty marketplace inventory.
+        - Bikes with missing stats.
+        - Mobile layout constraints.
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing notes
+      description: Describe the manual or automated checks expected before closing.
+      placeholder: |
+        - Load the game in a browser and verify the marketplace flow.
+        - Run any available automated checks.

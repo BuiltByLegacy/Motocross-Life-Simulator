@@ -1,0 +1,82 @@
+name: Bug Report
+description: Report broken behavior with clear reproduction steps and acceptance criteria for the fix.
+title: "[Bug]: "
+labels: ["type: bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A good bug issue explains **what** is wrong, **how** to reproduce it, and the **definition of done** for the fix.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Describe the broken behavior and what you expected instead.
+      placeholder: |
+        Example: After finishing a race, the results panel shows duplicate rival entries instead of one row per rider.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Provide exact steps from a fresh load when possible.
+      placeholder: |
+        1. Open the game.
+        2. Start a new career.
+        3. Enter the first local race.
+        4. Finish the race and inspect the results panel.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the correct behavior in one or two sentences.
+      placeholder: |
+        Each rider should appear once, sorted by finishing position.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include screenshots, console errors, or logs if available.
+      placeholder: |
+        Rival riders appear two or more times. No console error is shown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how
+    attributes:
+      label: How to fix / investigation notes
+      description: Add suspected cause, affected systems, or constraints. Leave as "Unknown" if not known.
+      placeholder: |
+        - Check race result generation and UI rendering.
+        - Confirm whether duplicates exist in state or are introduced during rendering.
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of done
+      description: List testable requirements for closing the bug.
+      placeholder: |
+        - [ ] Reproduction steps no longer produce duplicate riders.
+        - [ ] Race result ordering is unchanged.
+        - [ ] No new console errors are introduced.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, device, branch, or commit where this happened.
+      placeholder: Chrome on desktop, main branch
