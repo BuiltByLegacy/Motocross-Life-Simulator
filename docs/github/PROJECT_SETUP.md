@@ -43,3 +43,27 @@ The Friends, Connected Careers, and Leaderboard System issue drafts introduce th
 - Asynchronous multiplayer/social layer features such as friend notifications and optional world cameos.
 
 These drafts are documentation only and should not be treated as approval to implement gameplay, live multiplayer, backend services, or GitHub API automation.
+
+## Human Development, Sport Evolution, and History planning references
+
+The Human Development, Sport Evolution, and Motocross History issue drafts in `docs/github/issues/12_human_development_sport_evolution_history_issues.md` introduce the next major design systems for the project. Use these drafts when triaging design work for:
+
+- Human Development Engine
+- Injury & Medical System
+- Education & School System
+- Nutrition & Fitness System
+- Crew Management
+- Travel & Camping
+- Race Day Routine
+- Local Track Community
+- Equipment Wear
+- Family Tree
+- Contracts & Negotiation
+- Dynamic Goals
+- AI Coach
+- Pit Atmosphere
+- Sport Evolution
+- Era Selection
+- Motocross History
+
+These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, or create real GitHub issues directly. They also reinforce the design direction that sport changes should be gradual and authentic rather than disruptive random annual rule changes.
