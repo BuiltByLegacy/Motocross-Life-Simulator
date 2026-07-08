@@ -1,0 +1,54 @@
+name: Create issues from Markdown drafts
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_path:
+        description: Markdown draft file or directory to import
+        required: false
+        default: docs/github/issues
+        type: string
+      dry_run:
+        description: Preview issues without creating them
+        required: true
+        default: true
+        type: boolean
+      duplicate_mode:
+        description: How to handle existing open or closed issues with the same title
+        required: true
+        default: skip
+        type: choice
+        options:
+          - skip
+          - create
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issues:
+    name: Create GitHub Issues
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Convert Markdown drafts into GitHub Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRAFT_PATH: ${{ inputs.draft_path }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          DUPLICATE_MODE: ${{ inputs.duplicate_mode }}
+        run: |
+          node scripts/create-github-issues-from-drafts.js \
+            --path "$DRAFT_PATH" \
+            --duplicate-mode "$DUPLICATE_MODE" \
+            $([ "$DRY_RUN" = "true" ] && echo "--dry-run")
