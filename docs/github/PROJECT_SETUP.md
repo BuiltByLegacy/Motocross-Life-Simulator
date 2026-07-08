@@ -80,3 +80,21 @@ The Release Readiness epic and issue drafts prepare **Motocross: Chasing the Dre
 
 These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, or create real GitHub issues directly.
 
+## Monetization Strategy planning references
+
+The Monetization Strategy issue drafts in `docs/github/issues/15_monetization_strategy_issues.md` define how **Motocross: Chasing the Dream** can support sustainable monetization without allowing purchases to determine competitive success. Use these drafts when triaging design work for:
+
+- Monetization Strategy
+- Legacy Coins
+- Cash vs Legacy Coins economy separation
+- Cosmetic Shop
+- Rewarded Ads
+- Legacy Membership
+- Paid Expansions
+- Legacy Collections
+- Seasonal Legacy Challenges
+- IAP Guardrails
+- Monetization UI in the phone app, garage catalog, museum catalog, profile customization, documentary customization, and Legacy Shop
+
+These drafts are documentation only and should not be treated as approval to implement payments, implement ads, create gameplay systems, call the GitHub API, or create real GitHub issues directly. They reinforce the rule that purchases cannot buy race wins, rider stats, better bikes, better parts, Loretta qualification, injury immunity, sponsor advantages, or any other competitive shortcut.
+
