@@ -35,12 +35,20 @@ export class SponsorEngine {
       return false;
     }
   }
+  // You can't run two brands in the same product category (issue #13):
+  // two coffee shops, no — a coffee shop and a pizza shop, sure.
+  categoryTaken(category) {
+    return this.active().some((s) => s.category === category);
+  }
 
   // All sponsors grouped for the Sponsors tab: active / available / locked.
   board() {
     const out = { local: [], regional: [], national: [] };
     for (const s of SPONSORS) {
-      const status = this.isActive(s.id) ? 'active' : this.eligible(s) ? 'available' : 'locked';
+      let status;
+      if (this.isActive(s.id)) status = 'active';
+      else if (this.categoryTaken(s.category)) status = 'conflict';
+      else status = this.eligible(s) ? 'available' : 'locked';
       out[s.tier].push({ ...s, status });
     }
     return out;
@@ -52,6 +60,10 @@ export class SponsorEngine {
     const s = this.byId(id);
     if (!s) return { ok: false, msg: 'That sponsor is gone.' };
     if (this.isActive(id)) return { ok: false, msg: `${s.name} already backs you.` };
+    if (this.categoryTaken(s.category)) {
+      const rival = this.active().find((a) => a.category === s.category);
+      return { ok: false, msg: `You already run ${rival.name} — you can't have two ${s.category} sponsors.` };
+    }
     if (!this.eligible(s)) {
       return { ok: false, msg: `${s.name} passed for now. "${this._reqHint(s)}"` };
     }

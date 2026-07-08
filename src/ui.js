@@ -1035,17 +1035,19 @@ export class App {
     const active = g.sponsors.active();
 
     const sponsorRow = (s) => {
-      const locked = s.status === 'locked';
       const isActive = s.status === 'active';
-      return el('div', { class: 'sponsor-row' + (locked ? ' locked' : '') + (isActive ? ' active' : '') },
+      const conflict = s.status === 'conflict';
+      const locked = s.status === 'locked';
+      return el('div', { class: 'sponsor-row' + (locked || conflict ? ' locked' : '') + (isActive ? ' active' : '') },
         el('div', { class: 'sp-logo' }, s.logo),
         el('div', { class: 'sp-info' },
-          el('div', {}, el('b', {}, s.name), ' ', el('span', { class: 'sp-tier ' + s.tier }, s.tier)),
+          el('div', {}, el('b', {}, s.name), ' ', el('span', { class: 'sp-tier ' + s.tier }, s.category)),
           el('div', { class: 'faint small' }, s.pitch),
           el('div', { class: 'small', style: 'color:var(--green)' }, `$${s.bonus} to sign · $${s.stipend}/season · $${s.contingency} per top-${s.payThru}`),
         ),
         el('div', { class: 'sp-action' },
           isActive ? el('span', { class: 'sp-check' }, '✓ On your bike')
+            : conflict ? el('span', { class: 'faint small', title: `You already run a ${s.category} sponsor` }, `⛔ ${s.category} taken`)
             : locked ? el('span', { class: 'faint small' }, '🔒 Locked')
             : el('button', { class: 'btn small primary', onclick: () => this.pitchSponsor(s.id) }, 'Ask'),
         ),
