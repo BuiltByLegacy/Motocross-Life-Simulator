@@ -130,6 +130,7 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     responsibility: null, // age/trust permission snapshot (issues #104-#110)
     garageUpgrades: [], // owned Living Garage upgrades (issues #220/#213)
     seasonCommit: null, // season commitment lifecycle state (issue #229, DD-0029)
+    tutorial: null, // first-time onboarding tutorial progress (issue #243)
     seasonNumber: 1,
     startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
     _preparedWeek: 0, // guards once-per-week setup across save/load

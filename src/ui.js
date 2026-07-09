@@ -195,10 +195,41 @@ export class App {
         this.renderTopbar(),
         this.renderStats(),
       ),
-      el('div', { class: 'scroll-area' }, content),
+      el('div', { class: 'scroll-area' }, this.tutorialCoach(), content),
       this.renderTabs(),
     );
     this.root.replaceChildren(view);
+  }
+
+  // First-time onboarding coach (issue #243). A single, skippable card that
+  // teaches the career loop step by step. Info steps advance on a tap; milestone
+  // steps advance on their own when the player does the thing. Progress lives in
+  // the save, so skipping or half-finishing is remembered across restarts.
+  tutorialCoach() {
+    const g = this.game;
+    if (!g) return null;
+    const step = g.activeTutorialStep();
+    if (!step) return null;
+    const next = () => { g.advanceTutorial(); this.saveGame(); this.render(); };
+    const skip = () => { g.skipTutorial(); this.saveGame(); this.render(); };
+    return el('div', { class: 'coach' },
+      el('div', { class: 'coach-top' },
+        el('span', { class: 'coach-icon' }, step.icon),
+        el('div', { class: 'coach-txt' },
+          el('div', { class: 'coach-title' }, step.title),
+          el('div', { class: 'coach-body' }, step.body),
+        ),
+      ),
+      el('div', { class: 'coach-actions' },
+        el('span', { class: 'coach-progress' }, `Step ${step.index + 1} of ${step.total}`),
+        el('div', { class: 'coach-btns' },
+          el('button', { class: 'btn ghost small', onclick: skip }, 'Skip'),
+          step.kind === 'info'
+            ? el('button', { class: 'btn primary small', onclick: next }, step.cta)
+            : null,
+        ),
+      ),
+    );
   }
 
   renderTopbar() {
@@ -1850,6 +1881,11 @@ export class App {
         g.state.news.length
           ? el('div', {}, ...g.state.news.slice(0, 8).map((n) => el('div', { class: 'news-item' }, el('span', { class: 'wk' }, `Wk ${n.week} · `), n.text)))
           : el('div', { class: 'empty' }, 'Quiet in the paddock.'),
+      ),
+      el('div', { class: 'card' },
+        el('h3', {}, '❔ Help'),
+        el('p', { class: 'small faint' }, 'New to the loop, or skipped the intro? Replay the onboarding coach any time.'),
+        el('button', { class: 'btn ghost wide', onclick: () => { g.replayTutorial(); this.saveGame(); this.tab = 'week'; this._seasonView = false; this.render(); window.scrollTo(0, 0); } }, '🎓 Replay tutorial'),
       ),
     );
   }

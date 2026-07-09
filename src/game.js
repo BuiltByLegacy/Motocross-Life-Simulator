@@ -38,6 +38,7 @@ import { assessReadiness, parentRepairDecision, applyRepair } from './systems/pa
 import { buildMonthCalendar } from './systems/monthCalendar.js';
 import { v1GarageOverview, availableUpgrades, upgradeById } from './systems/garageV1.js';
 import { makeSeasonCommitment, advanceCommitment, lockPreconditions, isLocked, goRacingChecklist } from './systems/seasonCommitment.js';
+import { makeTutorial, activeTutorialStep, advanceTutorial, skipTutorial, replayTutorial } from './systems/tutorial.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
@@ -462,6 +463,18 @@ export class Game {
   }
   seasonLockPreconditions() { return lockPreconditions(this._commitContext()); }
   isSeasonLocked() { return isLocked(this.seasonCommit()); }
+
+  // ---- First-time onboarding tutorial (issue #243) -------------------------
+  tutorial() {
+    if (!this.state.tutorial) this.state.tutorial = makeTutorial();
+    return this.state.tutorial;
+  }
+  _tutorialCtx() { return { programSet: !!this.state.programSet, hasRaced: !!this.flag('had_race') }; }
+  // The onboarding step the player should see now, or null once done/skipped.
+  activeTutorialStep() { return activeTutorialStep(this.tutorial(), this._tutorialCtx()); }
+  advanceTutorial() { this.state.tutorial = advanceTutorial(this.tutorial(), this._tutorialCtx()); return this.state.tutorial; }
+  skipTutorial() { this.state.tutorial = skipTutorial(this.tutorial()); return this.state.tutorial; }
+  replayTutorial() { this.state.tutorial = replayTutorial(); return this.state.tutorial; }
 
   // ---- Go Racing launch checklist (issue #230) -----------------------------
   // The next committed race and its pre-race readiness, gating the Go Racing action.

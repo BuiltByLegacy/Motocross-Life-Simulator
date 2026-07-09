@@ -444,3 +444,20 @@ button { font-family: inherit; }
 @media (max-width: 360px) {
   .activity-grid, .strat-grid { grid-template-columns: 1fr; }
 }
+
+/* First-time onboarding coach (issue #243). A single warm card that walks the
+   player through the loop; skippable, replayable, and out of the way once done. */
+.btn.small { min-height: 34px; padding: 6px 12px; font-size: 0.85rem; }
+.coach {
+  background: linear-gradient(180deg, #2a2313, #241f14);
+  border: 1px solid var(--amber); border-left: 4px solid var(--amber);
+  border-radius: var(--radius); padding: 12px 14px; margin: 4px 0 12px;
+  box-shadow: var(--shadow);
+}
+.coach-top { display: flex; gap: 12px; align-items: flex-start; }
+.coach-icon { font-size: 1.6rem; line-height: 1; flex: none; }
+.coach-title { font-weight: 700; color: var(--amber-2); margin-bottom: 3px; }
+.coach-body { font-size: 0.9rem; color: var(--ink); }
+.coach-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.coach-progress { font-size: 0.74rem; letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink-faint); }
+.coach-btns { display: flex; gap: 8px; }
