@@ -142,8 +142,3 @@ The P0 fix issue drafts in `docs/github/issues/18_p0_calendar_loretta_marketplac
 - Calendar and season-flow regression tests
 
 These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, create real GitHub issues directly, or delete existing planned issues.
-
-## Create-Now v1.0 Launch Blockers
-
-Create real GitHub Issues now only from `docs/github/issues/00_CREATE_NOW_V1_LAUNCH_BLOCKERS.md`. All other issue draft files are design backlog unless explicitly promoted. See `docs/github/FUTURE_BACKLOG_GUIDE.md` for non-blocking future systems and promotion criteria.
-

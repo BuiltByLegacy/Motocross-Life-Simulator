@@ -37,10 +37,6 @@ This index organizes GitHub planning epics for Motocross: Chasing the Dream by L
 | 16 | [Career Outcomes System](epics/16_career_outcomes_system.md) | Plans amateur, pro, privateer, mechanic, coach, family, retirement, comeback, and legacy outcomes. | Priority 16 balances foundational dependencies with emotional storytelling needs. |
 | 17 | [Release Readiness](epics/17_release_readiness.md) | Plans App Store Version 1.0 launch scope, TestFlight beta, launch checklist, compliance, QA, telemetry, polish, and post-launch monitoring. | Priority 17 turns the planned systems into a stable, testable, App Store-ready core release. |
 
-## Create-Now v1.0 Launch Blockers
-
-Create real GitHub Issues now only from `docs/github/issues/00_CREATE_NOW_V1_LAUNCH_BLOCKERS.md`. All other issue draft files are design backlog unless explicitly promoted. See `docs/github/FUTURE_BACKLOG_GUIDE.md` for non-blocking future systems and promotion criteria.
-
 ## Planning Notes
 - Create one GitHub epic or parent issue from each epic file.
 - Use each `Child Issues` section to seed scoped planning issues.

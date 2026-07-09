@@ -67,7 +67,3 @@ Use `docs/github/issues/16_v1_scope_roadmap_mvp_cutline_issues.md` to align mile
 
 Recommended version sequence: v0.1 prototype, v0.2 vertical slice, v0.3 internal alpha, v0.4 TestFlight alpha, v0.5 external beta, v1.0 App Store launch, v1.1 first content update, and v2.0 major expansion.
 
-## Create-Now v1.0 Launch Blockers
-
-Create real GitHub Issues now only from `docs/github/issues/00_CREATE_NOW_V1_LAUNCH_BLOCKERS.md`. All other issue draft files are design backlog unless explicitly promoted. See `docs/github/FUTURE_BACKLOG_GUIDE.md` for non-blocking future systems and promotion criteria.
-

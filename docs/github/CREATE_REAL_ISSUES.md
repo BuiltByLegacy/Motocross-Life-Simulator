@@ -2,24 +2,13 @@
 
 The files in `docs/github/issues/` are planning drafts stored in the repository. GitHub does not automatically turn those Markdown files into Issues, so this repository includes a manual GitHub Actions workflow that imports them through the GitHub API.
 
-
-## App Store v1.0 launch-blocker import
-
-For the current App Store v1.0 push, run the workflow against only:
-
-```text
-docs/github/issues/00_CREATE_NOW_V1_LAUNCH_BLOCKERS.md
-```
-
-Do **not** import the whole `docs/github/issues/` folder for this push. Other draft files contain future design backlog and should stay unimported unless explicitly promoted.
-
 ## Workflow
 
 Use **Actions → Create issues from Markdown drafts → Run workflow**.
 
 Inputs:
 
-- **draft_path**: Markdown file or directory to import. The workflow default may be `docs/github/issues`, but for App Store v1.0 use `docs/github/issues/00_CREATE_NOW_V1_LAUNCH_BLOCKERS.md`.
+- **draft_path**: Markdown file or directory to import. The default is `docs/github/issues`.
 - **dry_run**: Keep this enabled first to preview what would be created without changing GitHub Issues.
 - **duplicate_mode**:
   - `skip`: Do not create a new issue when an issue with the exact same title already exists.
@@ -54,7 +43,7 @@ Labels are read from a `## Labels` section when labels are wrapped in backticks.
 You can preview the same parsing locally without a GitHub token:
 
 ```sh
-node scripts/create-github-issues-from-drafts.cjs --path docs/github/issues/00_CREATE_NOW_V1_LAUNCH_BLOCKERS.md --dry-run
+node scripts/create-github-issues-from-drafts.js --path docs/github/issues --dry-run
 ```
 
 Creating real issues outside GitHub Actions requires `GITHUB_TOKEN` and `GITHUB_REPOSITORY` environment variables with permission to create Issues.
