@@ -109,3 +109,36 @@ The Version 1.0 Scope, Roadmap, and MVP Cutline issue drafts in `docs/github/iss
 - Version Roadmap
 
 These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, create real GitHub issues directly, or delete existing planned issues.
+
+## Living Garage System planning references
+
+The Living Garage System issue drafts in `docs/github/issues/17_living_garage_system_issues.md` reframe the garage from an abstract inventory menu into the player's living home hub, workshop, storage space, museum, and physical interface. Use these drafts when triaging design work for:
+
+- Living Garage System
+- Physical inventory (shelves, bins, racks, hooks, stands, display cases)
+- Bike display and interaction
+- Parts shelves and component storage
+- Garage clutter and capacity
+- Garage upgrades and expansion
+- Garage museum and memory display
+- Family and social interactions in the garage
+- Garage arrival flow for purchased items
+- Garage UI navigation (the garage as a physical menu)
+- Garage visual states over time
+- Garage persistence and save data
+- Minimum Living Garage for v1.0
+- DD-0036, DD-0037, DD-0038
+
+These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, create real GitHub issues directly, or delete existing planned issues.
+
+## P0 Calendar, Loretta, Marketplace & Season-Flow fix planning references
+
+The P0 fix issue drafts in `docs/github/issues/18_p0_calendar_loretta_marketplace_fixes.md` capture urgent, high-priority corrections to core loops. Use these drafts when triaging critical fixes for:
+
+- Parent-controlled marketplace/dealer purchases and bike repairs for young riders
+- Correcting the Loretta Lynn's qualification structure (Area Qualifiers → Regional Championships → National), including research and citation
+- Changing the calendar from a week view to a month-based season calendar
+- Safe mid-season schedule editing that never traps the player or hides "Go Racing"
+- Calendar and season-flow regression tests
+
+These drafts are documentation only and should not be treated as approval to implement gameplay, call the GitHub API, create real GitHub issues directly, or delete existing planned issues.
