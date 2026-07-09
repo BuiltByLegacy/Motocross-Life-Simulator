@@ -34,6 +34,7 @@ import { evaluateApproval, permissionFor, trustScore } from './systems/responsib
 import { createBikeForClass, needsClassBike, classTransitionMemory } from './systems/bikeBuilder.js';
 import { createRaceWeekend, readinessChecklist, registerWeekend, advanceWeekend } from './systems/raceWeekend.js';
 import { seasonFlowState, guardEdit, pruneExpiredEvents } from './systems/seasonFlow.js';
+import { assessReadiness, parentRepairDecision, applyRepair } from './systems/parentPrep.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
@@ -385,6 +386,42 @@ export class Game {
     });
   }
 
+  // Parent-managed bike prep for young riders (#222). A kid can't manage
+  // purchases, so before a nearby race the parent checks the bike, decides how
+  // to fix it (dealer / used / shop) within budget/stress, and either gets it
+  // done or leaves a readiness warning. No-op for older riders / parent mode.
+  parentManageBikePrep() {
+    if (!this.needsRaceApproval()) return null;
+    const next = (this.state.calendar ?? []).find((c) => c.week >= this.week && c.race);
+    if (!next || next.week - this.week > 1) return null; // only when a race is imminent
+    const importance = next.race.kind === 'national' ? 0.9 : next.race.kind === 'regional' ? 0.7 : 0.4;
+    const readiness = assessReadiness(this.bike, { eventImportance: importance });
+    if (readiness.ready) return null;
+    const support = this.family.support_level ?? 0;
+    const decision = parentRepairDecision({
+      budget: this.family.money, stress: this.family.stress, trust: 50 + support * 10,
+      eventImportance: importance, readiness, mechanicSkill: 40 + support * 15,
+    });
+    const applied = applyRepair(readiness, decision);
+    if (decision.approve) {
+      this.spend(applied.spent);
+      for (const p of applied.repaired) {
+        if (p === 'condition') this.bike.condition = Math.max(this.bike.condition, 85);
+        else if (this.bike.parts && this.bike.parts[p] != null) this.bike.parts[p] = 100;
+      }
+      const how = decision.channel === 'shop' ? 'took the bike to the shop' : decision.channel === 'dealer' ? 'ordered new parts' : 'tracked down used parts';
+      this.notify({ source: 'garage', priority: 'normal', title: `Bike prepped for ${next.race.name}`, body: `${decision.reason} ($${applied.spent})`, actionTarget: { screen: 'garage' }, icon: '🔧' });
+      this.addNews(`Your parents ${how} to get you ready for ${next.race.name}.`, 'family');
+      this.stress(decision.channel === 'dealer' ? 3 : 1);
+      this.log(`🔧 Parents prepped the bike (${decision.channel}, $${applied.spent}).`);
+    } else if (applied.warning) {
+      this.notify({ source: 'garage', priority: 'high', title: 'Bike not fully race-ready', body: `${decision.reason} ${next.race.name} is coming up.`, actionTarget: { screen: 'garage' }, icon: '⚠️' });
+      this.addNews(`Money’s tight — the bike isn’t fully sorted for ${next.race.name}.`, 'family');
+      this.log(`⚠️ Bike not fully ready for ${next.race.name} (${decision.reason}).`);
+    }
+    return { decision, applied };
+  }
+
   // Start-of-week world ticks. Idempotent per week.
   prepareWeek() {
     if (this.state._preparedWeek === this.week) return;
@@ -420,6 +457,8 @@ export class Game {
     this.queueCalendarNotifications();
     // Dealer orders in transit may arrive this week (#39).
     this.receiveDealerOrders();
+    // Young riders: the parent gets the bike ready before a nearby race (#222).
+    this.parentManageBikePrep();
   }
 
   // Add calendar notifications for the next race weekend and its registration
