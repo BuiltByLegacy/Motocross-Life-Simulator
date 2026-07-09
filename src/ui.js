@@ -37,9 +37,10 @@ const PERSON_ICON = { dad: '👨', mom: '👩', coach_mike: '🧢', rival_ethan:
 const SAVE_KEY = 'legacy_mx_save_v2';
 
 export class App {
-  constructor(root) {
+  constructor(root, { diag = null } = {}) {
     this.root = root;
     this.game = null;
+    this.diag = diag; // local crash/error log (#246); may be null in tests
     this.tab = 'week';
     this.weekContent = () => el('div');
     this.digest = [];
@@ -47,6 +48,11 @@ export class App {
     this.plannerSel = [];
     this.race = null;
     this.lastResult = null;
+  }
+
+  // Record a diagnostic if a log is wired (#246). Never throws.
+  _diag(type, message, context) {
+    try { this.diag?.record({ type, message, context }); } catch (e) { /* diagnostics must never break play */ }
   }
 
   mount() {
@@ -58,7 +64,9 @@ export class App {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(this.game.toSave()));
     } catch (e) {
-      /* storage may be unavailable (private mode); play continues in-memory */
+      // Storage may be unavailable (private mode) or serialization may fail;
+      // play continues in-memory, but record it so we can see save health (#246).
+      this._diag('save_failure', e?.message ?? 'save failed', { seed: this.game?.rng?.seed, week: this.game?.week, screen: this.tab });
     }
   }
   loadSave() {
@@ -75,7 +83,18 @@ export class App {
   continueGame() {
     const save = this.loadSave();
     if (!save) return;
-    this.game = Game.load(save);
+    try {
+      this.game = Game.load(save); // throws on a missing/corrupt save (#242)
+    } catch (e) {
+      // Don't crash to a blank screen — log it, keep the (bad) save so it isn't
+      // silently destroyed, and route the player back to a clear starting point.
+      this._diag('load_failure', e?.message ?? 'load failed', { screen: 'title' });
+      this._corruptSave = true;
+      this.onboard = null;
+      this.renderTitle();
+      return;
+    }
+    this._corruptSave = false;
     this.tab = 'week';
     this.startWeek();
   }
@@ -100,13 +119,18 @@ export class App {
     let card;
     if (o.step === 'campaign') {
       const save = this.loadSave();
+      const validSave = save && Game.isValidSave(save);
       card = el('div', {},
-        save ? el('div', { class: 'card' },
+        this._corruptSave ? el('div', { class: 'card' },
+          el('div', { class: 'eyebrow' }, '⚠️ Save couldn’t be loaded'),
+          el('p', { class: 'small' }, 'Your saved career file was missing or corrupt, so it couldn’t be opened. Starting a new life below will replace it.'),
+        ) : null,
+        validSave ? el('div', { class: 'card' },
           el('div', { class: 'eyebrow' }, 'Saved career'),
           el('h2', {}, `${save.state.rider.name}, age ${save.state.rider.age}`),
           el('button', { class: 'btn primary wide', onclick: () => this.continueGame() }, 'Continue Career →'),
         ) : null,
-        save ? el('p', { class: 'faint small center' }, '— or start a new life —') : null,
+        validSave ? el('p', { class: 'faint small center' }, '— or start a new life —') : null,
         el('div', { class: 'card' },
           el('div', { class: 'eyebrow' }, 'Step 1 of 4'),
           el('h2', {}, 'Who are you?'),
@@ -1886,7 +1910,21 @@ export class App {
         el('h3', {}, '❔ Help'),
         el('p', { class: 'small faint' }, 'New to the loop, or skipped the intro? Replay the onboarding coach any time.'),
         el('button', { class: 'btn ghost wide', onclick: () => { g.replayTutorial(); this.saveGame(); this.tab = 'week'; this._seasonView = false; this.render(); window.scrollTo(0, 0); } }, '🎓 Replay tutorial'),
+        this.diagnosticsLine(),
       ),
+    );
+  }
+
+  // Compact, privacy-safe diagnostics summary (#246). Shows only counts of
+  // captured errors and a way to clear them — no personal data is displayed.
+  diagnosticsLine() {
+    if (!this.diag) return null;
+    const n = this.diag.entries.length;
+    if (!n) return el('p', { class: 'small faint', style: 'margin-top:10px' }, '✅ No errors logged this device.');
+    const kinds = Object.entries(this.diag.countByType()).map(([k, c]) => `${k}×${c}`).join(', ');
+    return el('div', { style: 'margin-top:10px' },
+      el('p', { class: 'small', style: 'color:var(--amber-2)' }, `⚠️ ${n} diagnostic${n === 1 ? '' : 's'} logged: ${kinds}`),
+      el('button', { class: 'btn ghost small', onclick: () => { this.diag.clear(); this.render(); } }, 'Clear diagnostics'),
     );
   }
 
