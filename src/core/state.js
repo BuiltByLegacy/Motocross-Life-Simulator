@@ -125,6 +125,8 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     assets: null, // asset provenance registry (issue #69)
     memTriggers: null, // automatic memory-trigger dedupe state (issue #70)
     notifications: null, // phone notification queue (issue #74)
+    raceWeekend: null, // current race-weekend lifecycle state (issues #160-#164)
+    responsibility: null, // age/trust permission snapshot (issues #104-#110)
     seasonNumber: 1,
     startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
     _preparedWeek: 0, // guards once-per-week setup across save/load

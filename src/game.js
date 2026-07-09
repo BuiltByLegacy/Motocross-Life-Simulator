@@ -28,6 +28,9 @@ import { phoneApps as buildPhoneApps, canAccess } from './systems/phoneHub.js';
 import { dealerCatalog as buildDealerCatalog, dealerPrice, placeOrder, receiveOrders } from './systems/dealer.js';
 import { search as usedSearch, filterListings as usedFilter, sortListings as usedSort } from './systems/usedMarketplace.js';
 import { RaceSession } from './engines/raceEngine.js';
+import { evaluateApproval, permissionFor, trustScore } from './systems/responsibility.js';
+import { createBikeForClass, needsClassBike, classTransitionMemory } from './systems/bikeBuilder.js';
+import { createRaceWeekend, readinessChecklist, registerWeekend, advanceWeekend } from './systems/raceWeekend.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
@@ -551,6 +554,31 @@ export class Game {
 
   phoneCtx() { return { age: this.rider.age, campaign: this.campaign }; }
 
+  responsibilityCtx(extra = {}) {
+    return {
+      age: this.rider.age,
+      gradesGood: this.flag('grades_good'),
+      helpedBike: this.flag('helped_bike') || this.flag('background_mechanic'),
+      earnedOwnMoney: this.flag('earned_own_money'),
+      irresponsibleSpending: this.flag('irresponsible_spending'),
+      injury: this.rider.injury,
+      familyStress: this.family.stress,
+      money: this.family.money,
+      ...extra,
+    };
+  }
+  trustScore(extra = {}) {
+    const score = trustScore(this.responsibilityCtx(extra));
+    this.state.responsibility = { ...(this.state.responsibility ?? {}), trust: score, updatedWeek: this.week };
+    return score;
+  }
+  permissionFor(action, extra = {}) {
+    return permissionFor(action, { age: this.rider.age, trust: this.trustScore(extra) });
+  }
+  approvalFor(action, extra = {}) {
+    return evaluateApproval(action, this.responsibilityCtx(extra));
+  }
+
   // Apps for the phone home screen, with access gating + unread badges (#73).
   phoneApps() {
     const unread = this.notifications.unreadBySource(this.dayIndex);
@@ -760,6 +788,49 @@ export class Game {
     if (byClass.has(activeClass)) out.push({ klass: activeClass, bike: byClass.get(activeClass) });
     for (const [klass, bike] of byClass) if (klass !== activeClass) out.push({ klass, bike });
     return out;
+  }
+
+  classTransitionStatus(age = this.rider.age) {
+    return needsClassBike({ age, currentClass: this.rider.klass, ownedBikes: this.ownedBikes() });
+  }
+  buyRequiredClassBike({ year = this.seasonYear, price = null } = {}) {
+    const status = this.classTransitionStatus();
+    if (!status.requiresPurchase) return { ok: true, status, bike: this.ownedBikes().find((b) => b.klass === status.targetClass) };
+    const bike = createBikeForClass(status.targetClass, year);
+    const cost = price ?? Math.round(650 + (status.eligibleClasses.indexOf(status.targetClass) + 1) * 225);
+    const approval = this.approvalFor('buy_bike', { cost });
+    if (this.family.money < cost) return { ok: false, reason: 'insufficient_funds', cost, approval, status };
+    if (approval.result === 'denied') return { ok: false, reason: 'approval_denied', cost, approval, status };
+    this.spend(cost);
+    this.addBike(bike, { via: 'purchase', price: cost });
+    return { ok: true, bike, cost, approval, status };
+  }
+
+  startRaceWeekend(entry = null) {
+    const race = entry?.race ?? this.meta()?.race;
+    if (!race) return null;
+    const classes = this.enterableClasses().map((c) => c.klass);
+    const weekend = createRaceWeekend(race, { classes });
+    const approval = this.approvalFor(race.lorettaStage ? 'loretta_attempt' : 'ask_race', {
+      cost: Math.round(35 * (race.entryMult ?? 1)),
+    });
+    const readiness = readinessChecklist({
+      event: race,
+      rider: this.rider,
+      bike: this.bike,
+      family: this.family,
+      classes,
+      approval,
+      currentDay: this.dayIndex,
+    });
+    const registered = registerWeekend(weekend, readiness);
+    this.state.raceWeekend = registered;
+    return registered;
+  }
+  advanceRaceWeekend(event = {}) {
+    if (!this.state.raceWeekend) return null;
+    this.state.raceWeekend = advanceWeekend(this.state.raceWeekend, event);
+    return this.state.raceWeekend;
   }
 
   buildRace(bike) {
@@ -1048,7 +1119,8 @@ export class Game {
     this.rider.age = this.seasonYear - this.rider.birthYear;
     const newClass = this.classForAge(this.rider.age);
 
-    // Moving up a class: the outgrown bike becomes a keepsake, a new one arrives.
+    // Moving up a class: the outgrown bike becomes a keepsake, but the correct
+    // next-class bike must be owned or bought. No silent free bike.
     if (newClass !== this.rider.klass) {
       const old = this.bike;
       old.role = 'spare';
@@ -1057,18 +1129,27 @@ export class Game {
         name: `${old.name} (first ${old.klass})`,
         memory: `Your ${old.klass} from ${old.year}. Outgrown, never forgotten.`,
       });
-      this.memory.record({
-        type: 'object',
-        title: `Moved Up to ${newClass}`,
-        summary: `You outgrew the ${old.klass} and stepped up to a ${newClass}. Bigger bike, bigger jumps, same kid.`,
-        emotion: ['nerves', 'pride'],
-        tags: ['milestone', 'growing_up'],
-        importance: 68,
-        force: true,
-      });
+      const ownedNext = (this.state.garage.bikes ?? []).find((b) => b.klass === newClass && b.role !== 'sold');
       this.rider.klass = newClass;
-      this.state.bike = BIKE_FOR_CLASS(newClass, this.seasonYear - 1);
-      this.assets.ensure(this.state.bike, { kind: 'bike' }); // provenance for the new machine (#69)
+      if (ownedNext) {
+        this.setRaceBike(ownedNext.assetId);
+        this.memory.record(classTransitionMemory({ fromClass: old.klass, toClass: newClass, boughtBike: false }));
+      } else {
+        const cost = 900 + (ELIGIBLE_CLASSES(this.rider.age).indexOf(newClass) * 250);
+        if (this.family.money >= cost) {
+          this.spend(cost);
+          const nextBike = createBikeForClass(newClass, this.seasonYear - 1);
+          this.state.bike = nextBike;
+          this.assets.ensure(nextBike, { kind: 'bike' }); // provenance for the new machine (#69)
+          this.memory.record(classTransitionMemory({ fromClass: old.klass, toClass: newClass, boughtBike: true }));
+          this.addNews(`Moved up to ${newClass}. The family bought the bike required to race the new class.`, 'garage');
+        } else {
+          this.state.bike = old;
+          this.state.flags.needs_class_bike = newClass;
+          this.memory.record(classTransitionMemory({ fromClass: old.klass, toClass: newClass, boughtBike: false }));
+          this.addNews(`Moved up to ${newClass}, but the right bike is still needed before racing that class.`, 'garage');
+        }
+      }
     }
 
     // Natural maturation — kids get stronger as they grow.

@@ -82,6 +82,30 @@ This log captures decisions made during planning so the reasoning is not lost.
 **Reason:** Reinforces the philosophy that every character has goals, memories, relationships, and life outside the player.  
 **Status:** Proposed
 
+## DD-0019 - Responsibility Is Earned Through Age and Trust
+**Decision:** Rider actions, information, money access, phone access, marketplace access, travel, race registration, sponsor communication, and independence are based on age first, then modified by trust, responsibility, grades, injuries, family stress, family finances, and past behavior.  
+**Reason:** Youth motocross depends on parents and earned trust. A young rider should not see or control adult logistics, while older riders should feel the pressure and freedom of growing up.  
+**Consequences:** Phone, marketplace, jobs, travel, race planning, purchases, contracts, and UI visibility must ask the responsibility system before exposing direct control. Parent Mode can see full adult context; Rider Mode uses age-appropriate framing.  
+**Status:** Locked
+
+## DD-0029 - Seasons Must Transition From Planning to Commitment
+**Decision:** Players can draft and adjust a season calendar, but must review, approve, and lock the season before active gameplay. Once locked, the player progresses through time, deadlines, travel, race weekends, registration consequences, and cancellation rules.  
+**Reason:** The calendar is not a passive list. Planning is reversible; commitment creates costs, deadlines, family expectations, and race-weekend obligations.  
+**Consequences:** Draft changes stay low-friction. Locked changes require refund, cancellation, approval, or rescheduling rules. Race weekends are entered through readiness checks and an explicit lifecycle state, not an ambiguous calendar click.  
+**Status:** Locked
+
+## DD-0031 - Paid Purchases Cannot Improve Competitive Outcomes
+**Decision:** Legacy Coins, memberships, rewarded ads, cosmetics, collections, or any paid purchase cannot buy race wins, rider stats, better bikes, better parts, Loretta qualification, injury immunity, sponsor advantages, or hidden simulation advantages.  
+**Reason:** Monetization must support the game without undermining authenticity, fairness, or the emotional value of earned progress.  
+**Consequences:** Launch monetization is limited to cosmetic/non-competitive presentation and compliant purchase restoration. Competitive economy remains cash, effort, relationships, and time.  
+**Status:** Locked
+
+## DD-0035 - Version 1.0 Must Prove the Core Loop Before the Full Vision
+**Decision:** Version 1.0 focuses on a polished, playable, replayable core career loop. Large systems already planned in GitHub issues remain valid roadmap work, but they do not block launch unless required for the core loop.  
+**Reason:** The project needs a launchable target before the full life-sim vision expands. Core-loop quality comes before scope breadth.  
+**Consequences:** v1.0 prioritizes onboarding, season planning, race entry, race simulation, garage, marketplace/dealer basics, money, memories, save/load, settings, compliance, and release readiness. Friends, era selection, deep documentary tools, full pro career, deep world simulation, and advanced monetization are later roadmap work.  
+**Status:** Locked
+
 ## DD-0017 - Story Engine Philosophy
 **Decision:** The Story Engine should not ask, "What happens next?" It should ask, "Given everything that has happened so far, what is the most believable thing that could happen next?"  
 **Reason:** Separates life simulation from scripted career mode.  
