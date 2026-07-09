@@ -33,6 +33,7 @@ import { RaceSession } from './engines/raceEngine.js';
 import { evaluateApproval, permissionFor, trustScore } from './systems/responsibility.js';
 import { createBikeForClass, needsClassBike, classTransitionMemory } from './systems/bikeBuilder.js';
 import { createRaceWeekend, readinessChecklist, registerWeekend, advanceWeekend } from './systems/raceWeekend.js';
+import { seasonFlowState, guardEdit, pruneExpiredEvents } from './systems/seasonFlow.js';
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
@@ -346,6 +347,42 @@ export class Game {
   }
   isSeasonOver() {
     return this.week > 12;
+  }
+
+  // Bike is race-ready if it isn't badly worn and the rider isn't sidelined (#225).
+  bikeRaceReady() {
+    if (this.mustMissRace && this.mustMissRace()) return false;
+    return (this.bike?.condition ?? 100) > 20;
+  }
+  // Youth riders in rider mode need a parent's yes to commit (#225). Parent mode
+  // is the parent, so no separate approval gate.
+  needsRaceApproval() {
+    return this.campaign !== 'parent' && (this.rider?.age ?? 18) < 13;
+  }
+
+  // The always-valid season flow state + action set — the anti-stuck guarantee
+  // that "Go Racing" never silently disappears after schedule edits (#225/#226).
+  seasonFlow() {
+    const events = (this.state.calendar ?? [])
+      .filter((c) => c.race)
+      .map((c) => ({ week: c.week, name: c.race.name, id: c.race.name, deadlineWeek: Math.max(1, c.week - 2) }));
+    return seasonFlowState({
+      week: this.week,
+      totalWeeks: 12,
+      programSet: this.state.programSet,
+      events,
+      currentEventInProgress: !!this.currentRace,
+      raceReady: this.bikeRaceReady(),
+      needsApproval: this.needsRaceApproval(),
+    });
+  }
+  // Validate a mid-season schedule edit (#225).
+  guardScheduleEdit(edit) {
+    return guardEdit(edit, {
+      week: this.week,
+      currentInProgress: !!this.currentRace,
+      needsApproval: this.needsRaceApproval(),
+    });
   }
 
   // Start-of-week world ticks. Idempotent per week.

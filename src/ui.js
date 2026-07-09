@@ -648,10 +648,40 @@ export class App {
   }
 
   // ---- Season / monthly calendar (issue #5) -------------------------------
+  // Anti-stuck safety net: if the schedule is empty or racing is blocked, always
+  // surface a valid next action so "Go Racing" can never vanish (#225).
+  seasonFlowBanner() {
+    const g = this.game;
+    const flow = g.seasonFlow();
+    if (flow.state !== 'empty_schedule' && flow.state !== 'event_blocked') return null;
+    const handlers = {
+      add_event: () => { this._programSel = { ...g.state.program }; this._seasonView = false; this.showWeek(() => this.viewProgramBuilder(true)); },
+      build_program: () => { this._programSel = { ...g.state.program }; this._seasonView = false; this.showWeek(() => this.viewProgramBuilder(true)); },
+      practice: () => { this._seasonView = false; this.render(); },
+      rest: () => { this._seasonView = false; this.render(); },
+      advance: () => { this._seasonView = false; this.render(); },
+      advance_time: () => { this._seasonView = false; this.render(); },
+      repair_bike: () => { this.tab = 'garage'; this._seasonView = false; this.render(); },
+      skip_event: () => { this._seasonView = false; this.render(); },
+      request_approval: () => { this._seasonView = false; this.render(); },
+      end_season: () => this.renderRecap(),
+    };
+    const msg = flow.state === 'empty_schedule'
+      ? 'No races left on your calendar — pick what to do next so the season keeps moving.'
+      : 'Racing is blocked right now. Here’s how to get back on track.';
+    return el('div', { class: 'card', style: 'border-color:var(--amber)' },
+      el('div', { class: 'eyebrow' }, '⚠️ Keep the season moving'),
+      el('p', { class: 'small' }, msg),
+      el('div', { class: 'toolbar', style: 'flex-wrap:wrap;gap:6px' },
+        ...flow.actions.map((a) => el('button', { class: 'btn small' + (a.id === 'go_racing' || a.id === 'advance_to_next' ? ' primary' : ''), onclick: handlers[a.id] ?? (() => { this._seasonView = false; this.render(); }) }, a.label))),
+    );
+  }
+
   viewSeasonBoard() {
     const g = this.game;
     const cal = g.state.calendar;
     return el('div', {},
+      this.seasonFlowBanner(),
       this.lorettaDreamPanel(),
       el('div', { class: 'card' },
         el('div', { class: 'eyebrow' }, `${g.series.icon} ${g.series.label} · ${g.seasonYear}`),
