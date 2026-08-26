@@ -55,6 +55,22 @@ test('#229 draft edits stay safe: back_to_draft clears approval', () => {
   assert.equal(c.approvalGranted, false);
 });
 
+test('#229 active seasons can be edited, re-locked, and resumed without dead-ending', () => {
+  let c = makeSeasonCommitment('active');
+  c.approvalGranted = true;
+  const firstRevision = c.revision;
+  c = advanceCommitment(c, 'review');
+  assert.equal(c.state, 'review');
+  assert.equal(c.editingActiveSeason, true);
+  assert.equal(c.revision, firstRevision + 1);
+  c = advanceCommitment(c, 'lock', { eventCount: 3, hardConflicts: 0, needsApproval: true, approvalGranted: true, day: 35 });
+  assert.equal(c.state, 'locked');
+  c = advanceCommitment(c, 'start');
+  assert.equal(c.state, 'active');
+  assert.equal(c.editingActiveSeason, false);
+  assert.equal(c.approvalGranted, true);
+});
+
 test('#229 invalid transitions are rejected without changing state', () => {
   const c = makeSeasonCommitment();
   const bad = advanceCommitment(c, 'start'); // can't start from draft
