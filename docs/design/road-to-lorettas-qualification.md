@@ -1,95 +1,137 @@
-# Road to Loretta's — Corrected Qualification Structure (research-backed)
+# Road to Loretta's — 2026 Qualification Structure
 
-Resolves issue **#223** ("Research and Correct Loretta Lynn's Qualification
-Structure"). This document records the real AMA Amateur National Motocross
-Championship qualifying process, cites current official/industry sources, and
-maps it to the game's implementation in `src/systems/lorettasPath.js`.
+This document is the research-backed source of truth for the game's Road to Loretta's model.
 
-> **Principle:** Loretta's is a *qualification journey* (DD-0018), never a
-> selectable race. Only riders who earn advancement reach the Ranch.
+> **Principle:** Loretta's is a qualification journey, never a normal selectable race. The player earns each next step.
 
-## The real qualifying process (researched)
+## Official 2026 path
 
-To race the AMA Amateur National Motocross Championship at Loretta Lynn's Ranch,
-a rider completes a **two-step qualifying process** — Area Qualifiers, then
-Regional Championships — before earning a National entry:
+The AMA Amateur National Motocross Championship uses a two-step qualifying program before the National:
 
-- **Eight geographic regions:** Northeast, Southeast, Mid-East, North Central,
-  South Central, Northwest, Mid-West, and Southwest. Each region has up to eight
-  Area Qualifiers (50+ nationwide).
-- **Area Qualifiers** — a **two-moto** format offering all classes. Riders must
-  finish in an advancement position (commonly **Top 9**, varying by region per
-  the supplemental rules) to guarantee a spot at the Regional. Riders may attempt
-  more than one Area Qualifier to try to earn an advancement position.
-- **Regional Championships** — the next seeding step (13 Regionals across the 8
-  regions), run in a **three-moto** format (riders attend both weekend days so all
-  motos count toward an overall). Most regions split into a **Youth Regional** and
-  an **Amateur Regional** to handle rider volume (the Northwest and Southwest do
-  not split). Only riders who finish in a qualifying position — **Top 6** — advance
-  to the National.
-- **National Championship** — at **Loretta Lynn's Ranch, Hurricane Mills, TN**
-  (2026: **August 3–8**), a **three-moto** format decides each class title. It is
-  invite-only: a rider cannot enter without advancing through a Regional.
-- Class eligibility follows the AMA amateur class structure (age/displacement),
-  and riders may qualify in more than one eligible class.
+1. **Area Qualifier**
+2. **Regional Championship**
+3. **Loretta Lynn's National** — only after Regional qualification
 
-### Sources
-- [How to Qualify — MX Sports](https://mxsports.com/how-to-qualify)
-- [2026 AMA Amateur National Motocross Championship Area Qualifier and Regional Championship Dates — MX Sports](https://mxsports.com/2025/12/11/2026-ama-amateur-national-motocross-area-qualifier-and-regional-championship-dates)
-- [2026 AMA Amateur National Motocross Championship Qualifiers & Regionals Dates Announced — Racer X](https://racerxonline.com/2025/12/15/2026-ama-amateur-national-motocross-championship-dates-announced)
-- [Amateur Motocross — American Motorcyclist Association](https://americanmotorcyclist.com/racing/motocross/amateur-motocross/)
-- [2026 Loretta Lynn Area Qualifier and Regional Championship Dates Announced — Vurbmoto](https://www.vurbmoto.com/2026-loretta-lynn-area-qualifier-and-regional-championship-dates-announced/)
+Riders may attempt **as many Area Qualifiers, in as many regions, as they choose**. Advancing from an Area earns access to the Regional Championship for that same region. A rider can therefore keep multiple regional paths alive if time, budget, class eligibility, and the calendar allow it.
 
-*(Advancement counts and formats reflect the process described by these sources
-for the 2025–2026 cycle. Exact Area advancement positions vary by region per the
-official supplemental rules; the game uses Top 9 as a legible deterministic
-default.)*
+### Eight regions
 
-## How the game models it
+- Northeast
+- Southeast
+- Mid-East
+- North Central
+- South Central
+- Northwest
+- Mid-West
+- Southwest
 
-Implemented in `src/systems/lorettasPath.js` — a three-stage, per-class,
-region-locked state machine.
+### 2026 guaranteed advancement positions
 
-| Stage | Real format | Advance rule | Game `STAGE_INFO` |
-| --- | --- | --- | --- |
-| Area Qualifier | 2 motos | Top ~9 → Regional | `advanceSlots: 9, motos: 2` |
-| Regional Championship | 3 motos | Top 6 → National | `advanceSlots: 6, motos: 3` |
-| Loretta's National | 3 motos | title (invite-only) | `advanceSlots: 0, motos: 3` |
+| Region | Area -> Regional | Regional -> National |
+| --- | ---: | ---: |
+| Northeast | 9 | 6 |
+| Southeast | 9 | 6 |
+| Mid-East | 9 | 6 |
+| North Central | 9 | 6 |
+| South Central | 9 | 6 |
+| Northwest | 10 | 4 |
+| Mid-West | 12 | 4 |
+| Southwest | 12 | 4 |
 
-- **Regions:** `LORETTA_REGIONS` now lists the eight real regions (Northeast,
-  Southeast, Mid-East, North Central, South Central, Northwest, Mid-West,
-  Southwest). Advancement is locked to the region a rider starts in.
-- **Qualification state machine:** per class, `reached` tracks the furthest
-  cleared stage (`none → area → regional`); `dreamState` tracks
-  `dormant → chasing → area_qualified → regional_qualified → national_qualified`
-  (or `eliminated`). `eligibleToEnter()` enforces the prerequisites — a Regional
-  requires clearing an Area, and the **National is locked unless a Regional is
-  cleared**.
-- **Multiple Area attempts** are allowed (`recordAttempt` appends attempts;
-  region locks on the first). **Multiple classes** are tracked independently.
-- **Failed qualification paths:** finishing outside the advancement positions
-  sets `eliminated`, and `followUpChoices()` offers real options — try another
-  Area Qualifier, focus local, save for next season, train harder, or change
-  class strategy.
-- **Player-facing explanation:** planner warnings (`pathWarnings`) flag a missing
-  Area Qualifier, an unqualified Regional/National on the plan, region splits, and
-  bad date ordering; the season board shows a Road-to-Loretta's dream tracker.
+The game must **not** use one universal Top-9/Top-6 rule.
 
-### What changed for #223
-- Area advancement corrected **6 → 9**; Regional advancement corrected **8 → 6**
-  (top-6-to-the-Ranch is the real, meaningful cut).
-- Regions corrected to the **eight** real AMA regions (removed the inaccurate
-  "Mid-South"; added "Mid-East" and "Mid-West").
-- Added real **moto formats** (Area 2, Regional 3, National 3) to `STAGE_INFO`.
-- National remains invite-only and locked without a Regional advancement (already
-  enforced) — now documented and covered by a structure test in
-  `test/lorettasPath.test.mjs`.
+### Moto format
 
-## Deferred / not modeled (by design, for the prototype)
-- The Youth vs. Amateur Regional split and the two-day Regional attendance detail
-  are narrative flavor, not separate event objects, in the current build.
-- Exact per-region supplemental advancement counts are approximated by the Top-9
-  Area default.
-- Alternates/backup entries and the full AMA class-by-displacement table are out
-  of scope for the prototype; class eligibility uses the game's simplified ladder
-  (`LORETTA_CLASSES`).
+- Area Qualifiers: 2 motos.
+- Most Regional Championships: 3 motos.
+- Northwest, Mid-West, and Southwest are combined Amateur/Youth Regionals in 2026 and use the combined Regional format modeled as 2 motos.
+- Loretta Lynn's National: 3 motos.
+
+A rider must receive a numeric finish in at least one moto at an Area Qualifier to advance to a Regional, and in at least one Regional moto to advance to the National.
+
+### Multiple Regional qualifications
+
+If a rider qualifies for the National from multiple Regionals:
+
+1. Use the rider's **home region** if the rider qualified there.
+2. If the rider did not qualify in the home region, use the region with the **better Regional finish**.
+3. If finishes are equal, use the region in which the rider **qualified first**.
+
+This matters because the unused qualification position in another region moves down to another racer.
+
+### Registration and timing
+
+Regional qualification does not mean the family can ignore registration. Riders must pre-register for the Regional by the deadline to keep a guaranteed position. For the published 2026 Regional registration schedule, deadlines are the Monday before the event.
+
+The 2026 National is at Loretta Lynn's Ranch in Hurricane Mills, Tennessee, **August 3–8, 2026**.
+
+Regional events run from late May through late June in 2026. The calendar must represent Area Qualifiers, Regionals, deadlines, and the National on real dates/months rather than a generic weekly progression.
+
+### Current age constraints modeled
+
+The full AMA class matrix remains event data, but the current simplified game supports two explicit 2026 constraints:
+
+- Rider must be at least **14** on the Area Qualifier date to ride a 250cc machine.
+- Rider must be at least **12** on the Area Qualifier date to ride Supermini.
+- Riders under 18 require a parent present or applicable parental consent under the official rules.
+
+## Game implementation
+
+Rules live in `src/systems/lorettasRules2026.js`.
+
+Career-path state lives in `src/systems/lorettasPath.js`.
+
+### Per-class state
+
+Each class tracks:
+
+- all Area attempts
+- Area-qualified regions
+- Regional attempts
+- Regional-qualified regions
+- home region
+- selected National source region
+- National qualification
+- best National result
+- milestones/memories
+
+This is intentionally per class because motocross careers are nonlinear. Winning Loretta's on a 50 does not make a rider automatically successful on a 65.
+
+### Eligibility behavior
+
+- An Area Qualifier can be entered in any valid region if the rider/class is eligible.
+- A Regional can only be entered after Area advancement **in that same region**.
+- The National stays locked until at least one Regional qualification is earned.
+- Multiple Area regions are valid and should not generate a planner warning.
+- Planned Regionals without an earlier same-region Area path should generate a high-severity warning.
+
+### Failure behavior
+
+Missing an Area or Regional transfer is not a career progression wall. The player can:
+
+- try another eligible Area Qualifier if the calendar still permits
+- use another already-earned Regional path
+- focus on local racing
+- train
+- save money
+- reconsider class/bike strategy
+
+Failure remains part of the story, not a reason for the game to force upward progression.
+
+## Official sources
+
+- MX Sports 2026 Supplemental Rules: https://mxsports.com/supplemental-rules
+- MX Sports — How to Qualify: https://mxsports.com/how-to-qualify
+- 2026 Area Qualifier and Regional Championship dates: https://mxsports.com/2025/12/11/2026-ama-amateur-national-motocross-area-qualifier-and-regional-championship-dates
+- 2026 Regional Championship registration: https://mxsports.com/2026/04/01/2026-regional-championship-registration-now-open
+- 2026 National registration: https://mxsports.com/2026/06/30/national-registration-is-open-for-45th-annual-ama-amateur-national-motocross-championship
+
+## Still deferred
+
+These should remain explicit follow-on work rather than being guessed:
+
+- complete 2026 AMA National class matrix and every class-specific age/displacement rule
+- alternate registration and Power Ranking mechanics
+- detailed class caps per day in UI
+- every published 2026 Area Qualifier and Regional as production content
+- historical rule sets for future era modes
