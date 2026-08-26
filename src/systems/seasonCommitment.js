@@ -3,13 +3,20 @@
 // A season moves from an editable draft to a reviewed, approved, locked, and
 // active plan before race events can produce consequences. Planning is
 // reversible and low-friction; commitment creates costs, deadlines, and family
-// expectations. Race weekends are entered through an explicit, checked launch —
-// never an ambiguous calendar click. Pure, deterministic, serializable.
+// expectations. Active seasons may be reopened for future-event edits, then
+// reviewed/re-locked without losing the player's ability to continue racing.
+// Pure, deterministic, serializable.
 
 export const SEASON_COMMIT_STATES = ['draft', 'review', 'approval', 'locked', 'active', 'complete'];
 
 export function makeSeasonCommitment(state = 'draft') {
-  return { state: SEASON_COMMIT_STATES.includes(state) ? state : 'draft', approvalGranted: false, lockedDay: null };
+  return {
+    state: SEASON_COMMIT_STATES.includes(state) ? state : 'draft',
+    approvalGranted: false,
+    lockedDay: null,
+    revision: 0,
+    editingActiveSeason: false,
+  };
 }
 
 // Can the plan be locked yet? Draft/review edits stay safe; lock has preconditions.
@@ -26,19 +33,30 @@ export function lockPreconditions(ctx = {}) {
 
 // The commitment state machine. Returns { state } or { error, state } on an
 // invalid transition. Actions:
-//   review           draft → review
+//   review           draft|active → review
+//                    (active → review is the safe mid-season edit path)
 //   request_approval review → approval  (dependent riders)
 //   grant_approval   approval → approval (sets approvalGranted)
-//   lock             review|approval → locked  (requires preconditions)
+//   lock             review|approval → locked (requires preconditions)
 //   start            locked → active
 //   complete         active → complete
-//   back_to_draft    review|approval → draft   (edits are always safe)
+//   back_to_draft    review|approval → draft
 export function advanceCommitment(commit, action, ctx = {}) {
-  const s = commit.state;
-  const set = (state, extra = {}) => ({ ...commit, state, ...extra });
+  // Old saves predate revision/editingActiveSeason. Hydrate those fields here so
+  // mid-season editing works without a save migration just for this state object.
+  const base = { ...makeSeasonCommitment(), ...(commit ?? {}) };
+  const s = base.state;
+  const set = (state, extra = {}) => ({ ...base, state, ...extra });
+
   switch (action) {
     case 'review':
       if (s === 'draft') return set('review');
+      if (s === 'active') {
+        return set('review', {
+          editingActiveSeason: true,
+          revision: (base.revision ?? 0) + 1,
+        });
+      }
       break;
     case 'request_approval':
       if (s === 'review') return set('approval');
@@ -49,22 +67,24 @@ export function advanceCommitment(commit, action, ctx = {}) {
     case 'lock': {
       if (s !== 'review' && s !== 'approval') break;
       const pre = lockPreconditions(ctx);
-      if (!pre.canLock) return { ...commit, error: pre.blockers[0]?.message ?? 'Cannot lock yet.', blockers: pre.blockers };
-      return set('locked', { lockedDay: ctx.day ?? null });
+      if (!pre.canLock) return { ...base, error: pre.blockers[0]?.message ?? 'Cannot lock yet.', blockers: pre.blockers };
+      return set('locked', { lockedDay: ctx.day ?? base.lockedDay ?? null });
     }
     case 'start':
-      if (s === 'locked') return set('active');
+      if (s === 'locked') return set('active', { editingActiveSeason: false });
       break;
     case 'complete':
-      if (s === 'active') return set('complete');
+      if (s === 'active') return set('complete', { editingActiveSeason: false });
       break;
     case 'back_to_draft':
-      if (s === 'review' || s === 'approval') return set('draft', { approvalGranted: false });
+      if (s === 'review' || s === 'approval') {
+        return set('draft', { approvalGranted: false, editingActiveSeason: false });
+      }
       break;
     default:
       break;
   }
-  return { ...commit, error: `Can’t ${action} from ${s}.` };
+  return { ...base, error: `Can’t ${action} from ${s}.` };
 }
 
 export function isLocked(commit) { return commit?.state === 'locked' || commit?.state === 'active' || commit?.state === 'complete'; }
@@ -73,8 +93,6 @@ export function isActive(commit) { return commit?.state === 'active'; }
 // ---- #230 Go Racing launch checklist -------------------------------------
 // Assemble the pre-race readiness checklist for the next committed race. The
 // Go Racing action is only offered when every hard requirement passes.
-//   ctx: { event, seasonActive, bikeReady, feesAffordable, klassEligible,
-//          approvalOk, notInjured, alreadyRacedThisWeek }
 export function goRacingChecklist(ctx = {}) {
   const {
     event = null, seasonActive = true, bikeReady = true, feesAffordable = true,

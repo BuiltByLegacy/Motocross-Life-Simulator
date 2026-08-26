@@ -19,12 +19,23 @@ function season() {
 
 test('#224 groups 12 weeks into calendar months with real month names', () => {
   const mc = buildMonthCalendar(season(), { startMonthIndex: 3, year: 2026, currentWeek: 1 });
-  assert.equal(mc.months.length, 3); // 12 weeks / 4 = 3 months
+  assert.equal(mc.months.length, 3);
   assert.equal(mc.months[0].name, 'April');
   assert.equal(mc.months[1].name, 'May');
   assert.equal(mc.months[2].name, 'June');
   assert.equal(mc.months[0].label, 'April 2026');
   assert.equal(mc.months[0].weeks.length, 4);
+});
+
+test('#224 maps internal weeks onto real calendar dates instead of four-week pseudo-months', () => {
+  const mc = buildMonthCalendar(season(), { seasonStartDate: '2026-04-04', year: 2026, currentWeek: 1 });
+  const wk = (n) => mc.months.flatMap((m) => m.weeks).find((w) => w.week === n);
+  assert.equal(mc.seasonStartDate, '2026-04-04');
+  assert.equal(wk(1).date, '2026-04-04');
+  assert.equal(wk(4).date, '2026-04-25');
+  assert.equal(wk(5).date, '2026-05-02');
+  assert.equal(wk(9).date, '2026-05-30');
+  assert.equal(wk(10).date, '2026-06-06');
 });
 
 test('#224 tags weeks with race / qualifier / camp / off markers', () => {
@@ -56,18 +67,18 @@ test('#224 summary counts races, qualifiers, camps, off weekends, upcoming deadl
   assert.ok(mc.summary.offWeekends > 0);
   // Only deadlines at/after the current week are "upcoming"
   assert.ok(mc.summary.upcomingDeadlines.every((d) => d.week >= 6));
+  assert.ok(mc.summary.upcomingDeadlines.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d.date)));
 });
 
 test('#224 current month tracks the current week', () => {
   const mc = buildMonthCalendar(season(), { startMonthIndex: 3, currentWeek: 6 });
-  // week 6 is in the second month (weeks 5-8) → May, monthIndex 4
   assert.equal(mc.currentMonthIndex, 4);
   const now = mc.months.flatMap((m) => m.weeks).find((w) => w.week === 6);
   assert.equal(now.isNow, true);
   assert.equal(mc.months.flatMap((m) => m.weeks).find((w) => w.week === 3).isPast, true);
 });
 
-test('#224 month navigation clamps at the ends', () => {
+test('#224 month navigation clamps at the ends and preserves numeric UI compatibility', () => {
   const mc = buildMonthCalendar(season(), { startMonthIndex: 3 });
   assert.equal(adjacentMonth(mc, 3, +1), 4); // April → May
   assert.equal(adjacentMonth(mc, 5, +1), 5); // June is last → clamp
@@ -75,10 +86,11 @@ test('#224 month navigation clamps at the ends', () => {
   assert.equal(monthByIndex(mc, 4).name, 'May');
 });
 
-test('#224 handles year rollover in month labels', () => {
-  // A season starting in November spills into the next year.
+test('#224 keyed navigation stays unambiguous across year rollover', () => {
   const mc = buildMonthCalendar(season(), { startMonthIndex: 10, year: 2026 });
   assert.equal(mc.months[0].name, 'November');
-  assert.equal(mc.months[2].label, 'January 2027'); // month index 12 → Jan next year
+  assert.equal(mc.months[2].label, 'January 2027');
   assert.ok(MONTH_NAMES.includes(mc.months[0].name));
+  assert.equal(adjacentMonth(mc, mc.months[1].key, +1), mc.months[2].key);
+  assert.equal(monthByIndex(mc, mc.months[2].key).label, 'January 2027');
 });

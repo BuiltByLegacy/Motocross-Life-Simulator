@@ -47,6 +47,13 @@ test('#226 expired-deadline events are pruned to unavailable', () => {
   assert.equal(guardEdit({ type: 'add', event: ev(9, 'Late', { deadlineWeek: 7 }) }, { week: 8 }).result, 'blocked_deadline');
 });
 
+test('#226 unavailable future events are ignored when deciding the next playable action', () => {
+  const flow = seasonFlowState({ week: 8, programSet: true, events: [ev(9, 'Closed', { unavailable: true })] });
+  assert.equal(flow.state, 'empty_schedule');
+  assert.equal(flow.canRace, false);
+  assert.ok(flow.actions.some((a) => a.id === 'add_event'));
+});
+
 // ---- #226 bike not ready → repair or skip options ----
 test('#226 un-ready bike blocks racing but offers repair/skip/practice', () => {
   const flow = seasonFlowState({ week: 5, programSet: true, events: [ev(5, 'Pine Hollow')], raceReady: false });
@@ -55,12 +62,25 @@ test('#226 un-ready bike blocks racing but offers repair/skip/practice', () => {
   for (const id of ['repair_bike', 'skip_event', 'practice']) assert.ok(flow.actions.some((a) => a.id === id));
 });
 
-// ---- #226 young rider → parent approval required ----
-test('#226 youth rider needs approval before racing; edits need approval', () => {
-  const flow = seasonFlowState({ week: 5, programSet: true, events: [ev(5, 'Local')], raceReady: true, needsApproval: true });
+// ---- #226 young rider → parent approval required only when still outstanding ----
+test('#226 youth rider with explicit pending approval is blocked; schedule edits still need approval', () => {
+  const flow = seasonFlowState({ week: 5, programSet: true, events: [ev(5, 'Local')], raceReady: true, needsApproval: true, approvalGranted: false });
   assert.equal(flow.state, 'event_blocked');
   assert.ok(flow.actions.some((a) => a.id === 'request_approval'));
   assert.equal(guardEdit({ type: 'add', event: ev(7, 'Later') }, { week: 5, needsApproval: true }).result, 'needs_approval');
+});
+
+test('#226 approved youth season is race-ready instead of being blocked by age alone', () => {
+  const flow = seasonFlowState({ week: 5, programSet: true, events: [ev(5, 'Local')], raceReady: true, needsApproval: true, approvalGranted: true });
+  assert.equal(flow.state, 'event_ready');
+  assert.equal(flow.canRace, true);
+  assert.ok(flow.actions.some((a) => a.id === 'go_racing'));
+});
+
+test('#226 legacy callers that only provide age-gating do not create a false approval dead-end', () => {
+  const flow = seasonFlowState({ week: 5, programSet: true, events: [ev(5, 'Local')], raceReady: true, needsApproval: true });
+  assert.equal(flow.state, 'event_ready');
+  assert.equal(flow.canRace, true);
 });
 
 // ---- #226 edit guard: past/current locked ----
