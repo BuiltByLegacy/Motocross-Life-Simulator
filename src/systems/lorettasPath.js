@@ -1,50 +1,41 @@
-// Road to Loretta's — the amateur motocross dream (issues #25, #31, #58–#62)
-// ---------------------------------------------------------------------------
-// Loretta Lynn's is not a race you enter — it's a path you earn. This module is
-// pure domain logic modeling the authentic three-stage qualifying journey:
+// Road to Loretta's — the amateur motocross dream.
+// --------------------------------------------------
+// Authentic 2026 path:
+//   Area Qualifier -> Regional Championship -> Loretta Lynn's National
 //
-//     Area Qualifier  →  Regional Championship  →  Loretta Lynn's National
-//
-// It validates rider/class/region eligibility, tracks advancement per class,
-// allows multiple Area Qualifier attempts, generates planner warnings, and
-// emits milestone *descriptors* (the Memory Engine turns them into memories —
-// this module never touches game state). See:
-//   #58 qualification-path model      #59 area-qualifier selection rules
-//   #60 regional advancement rules    #62 planner warnings
-//   #61 dream status & emotional stakes   #31 milestone memory tracking
-//   #25 the overall system + failure follow-ups
+// Riders may attempt as many Area Qualifiers, in as many regions, as they
+// choose. Regional eligibility is earned in the SAME region as the Area
+// advancement. National qualification is resolved from Regional results using
+// the rider's home region first, then best finish, then first qualification.
+
+import {
+  LORETTA_REGIONS,
+  advancementSlots,
+  regionalMotoCount,
+  basicAgeEligibility,
+  isKnownLorettaRegion,
+  selectNationalSourceRegion,
+} from './lorettasRules2026.js';
+
+export { LORETTA_REGIONS } from './lorettasRules2026.js';
 
 export const LORETTA_STAGES = ['area', 'regional', 'national'];
 
-// Each stage advances its top finishers to the next, mirroring the real AMA
-// Amateur National qualifying process (see docs/design/road-to-lorettas-qualification.md):
-//   Area Qualifier  — two-moto format, top ~9 advance to the Regional.
-//   Regional Championship — three-moto format, top 6 advance to the National.
-//   Loretta Lynn's National — three-moto format; invite-only, no further stage.
-// Real Area advancement varies by region per the supplemental rules; 9 is the
-// deterministic model default that keeps the sim legible.
+// `advanceSlots` remains as a compatibility default for older callers; domain
+// logic uses the region-specific 2026 rules module instead.
 export const STAGE_INFO = {
-  area: { key: 'area', label: 'Area Qualifier', short: 'Area', order: 0, next: 'regional', advanceSlots: 9, motos: 2 },
-  regional: { key: 'regional', label: 'Regional Championship', short: 'Regional', order: 1, next: 'national', advanceSlots: 6, motos: 3 },
+  area: { key: 'area', label: 'Area Qualifier', short: 'Area', order: 0, next: 'regional', advanceSlots: 9, motos: 2, regionSpecific: true },
+  regional: { key: 'regional', label: 'Regional Championship', short: 'Regional', order: 1, next: 'national', advanceSlots: 6, motos: 3, regionSpecific: true },
   national: { key: 'national', label: "Loretta Lynn's National", short: "Loretta's", order: 2, next: null, advanceSlots: 0, motos: 3 },
 };
 
-// The qualifying map is split into eight real AMA amateur regions; a rider
-// chases through one region and advancement stays within it.
-export const LORETTA_REGIONS = [
-  'Northeast', 'Southeast', 'Mid-East', 'North Central', 'South Central', 'Northwest', 'Mid-West', 'Southwest',
-];
-
-// Classes eligible to chase Loretta's in this build (mirrors the game's ladder).
+// The current game only exposes these simplified class names. The complete AMA
+// class matrix belongs in event data; event.classes remains authoritative.
 export const LORETTA_CLASSES = ['50cc', '65cc', '85cc', 'Supermini', '250B'];
-
-// The rider's dream status, furthest-first.
 export const DREAM_STATES = ['dormant', 'chasing', 'area_qualified', 'regional_qualified', 'national_qualified', 'eliminated'];
 
 const STAGE_ORDER = { none: -1, area: 0, regional: 1, national: 2 };
 
-// Classify an event into a Loretta stage, or null if it isn't on the path.
-// Prefers explicit metadata; falls back to the qualifier category for areas.
 export function classifyEvent(event) {
   if (!event) return null;
   if (event.lorettaStage && LORETTA_STAGES.includes(event.lorettaStage)) return event.lorettaStage;
@@ -52,74 +43,120 @@ export function classifyEvent(event) {
   return null;
 }
 
+function blankClassRecord() {
+  return {
+    reached: 'none',
+    region: null, // legacy/display compatibility: first successful Area region
+    homeRegion: null,
+    attempts: [],
+    eliminated: false,
+    dreamState: 'dormant',
+    areaQualifiedRegions: [],
+    regionalQualifications: [],
+    selectedNationalRegion: null,
+    bestNational: null,
+  };
+}
+
+function uniquePush(list, value) {
+  if (value != null && !list.includes(value)) list.push(value);
+}
+
+function hydrateRecord(rec = {}) {
+  const out = { ...blankClassRecord(), ...rec };
+  out.attempts = Array.isArray(out.attempts) ? out.attempts : [];
+  out.areaQualifiedRegions = Array.isArray(out.areaQualifiedRegions) ? [...out.areaQualifiedRegions] : [];
+  out.regionalQualifications = Array.isArray(out.regionalQualifications) ? [...out.regionalQualifications] : [];
+
+  // Migrate saves created before multi-region qualifying was modeled.
+  for (const a of out.attempts) {
+    if (a.stage === 'area' && a.advanced && a.region) uniquePush(out.areaQualifiedRegions, a.region);
+    if (a.stage === 'regional' && a.advanced && a.region && !out.regionalQualifications.some((q) => q.region === a.region && q.finish === a.finish)) {
+      out.regionalQualifications.push({ region: a.region, finish: a.finish, day: a.day ?? null, qualified: true });
+    }
+  }
+  if (!out.areaQualifiedRegions.length && out.region && STAGE_ORDER[out.reached] >= STAGE_ORDER.area) uniquePush(out.areaQualifiedRegions, out.region);
+  if (!out.regionalQualifications.length && out.region && STAGE_ORDER[out.reached] >= STAGE_ORDER.regional) {
+    out.regionalQualifications.push({ region: out.region, finish: null, day: null, qualified: true, migrated: true });
+  }
+  out.selectedNationalRegion = out.selectedNationalRegion
+    ?? selectNationalSourceRegion(out.regionalQualifications, out.homeRegion);
+  return out;
+}
+
 export class LorettasPath {
-  constructor() {
-    // Per-class progression. `reached` is the furthest stage cleared ('none'
-    // until an Area Qualifier is won through). `region` locks once chosen.
-    this.byClass = {}; // klass -> { reached, region, attempts:[], eliminated, dreamState }
-    this.milestones = []; // ordered milestone descriptors already emitted
-    this._seen = new Set(); // milestone keys already fired (once-per-career)
+  constructor({ homeRegion = null } = {}) {
+    this.homeRegion = homeRegion;
+    this.byClass = {};
+    this.milestones = [];
+    this._seen = new Set();
   }
 
   _class(klass) {
-    if (!this.byClass[klass]) {
-      this.byClass[klass] = { reached: 'none', region: null, attempts: [], eliminated: false, dreamState: 'dormant' };
-    }
+    if (!this.byClass[klass]) this.byClass[klass] = blankClassRecord();
+    this.byClass[klass] = hydrateRecord(this.byClass[klass]);
+    if (!this.byClass[klass].homeRegion && this.homeRegion) this.byClass[klass].homeRegion = this.homeRegion;
     return this.byClass[klass];
   }
 
-  // ---- #58/#59/#60 eligibility --------------------------------------------
-  // Can a rider in `klass` (in `region`) enter this event right now?
-  // Returns { ok, reasons:[] } — reasons explain every failure (planner UX).
-  eligibleToEnter(event, { klass, region } = {}) {
+  eligibleToEnter(event, { klass, region, age, homeRegion } = {}) {
     const stage = classifyEvent(event);
     const reasons = [];
     if (!stage) return { ok: false, stage: null, reasons: ['Not a Loretta’s qualifying event.'] };
 
-    if (klass && !LORETTA_CLASSES.includes(klass)) {
-      reasons.push(`${klass} isn’t an eligible Loretta’s class.`);
-    }
-    // Event may restrict its classes; if it lists them, the rider must fit.
-    if (event.classes && klass && !event.classes.includes(klass)) {
-      reasons.push(`This ${STAGE_INFO[stage].label} doesn’t run a ${klass} class.`);
-    }
+    if (klass && !LORETTA_CLASSES.includes(klass)) reasons.push(`${klass} isn’t an eligible Loretta’s class in the current game data.`);
+    if (event.classes && klass && !event.classes.includes(klass)) reasons.push(`This ${STAGE_INFO[stage].label} doesn’t run a ${klass} class.`);
+
+    const ageCheck = basicAgeEligibility({ klass, age });
+    reasons.push(...ageCheck.reasons);
 
     const rec = klass ? this._class(klass) : null;
+    if (rec && homeRegion && !rec.homeRegion) rec.homeRegion = homeRegion;
     const evRegion = event.region ?? region ?? null;
 
-    // Region lock: once you’ve started the path in a region, you stay in it.
-    if (rec && rec.region && evRegion && rec.region !== evRegion) {
-      reasons.push(`You’re chasing the ${rec.region} region — this event is ${evRegion}.`);
+    if (stage !== 'national') {
+      if (!evRegion) reasons.push(`${STAGE_INFO[stage].label} needs a region.`);
+      else if (!isKnownLorettaRegion(evRegion)) reasons.push(`${evRegion} is not a recognized Loretta’s qualifying region.`);
     }
 
-    // Prerequisite advancement (#60): can't jump to a later stage unqualified.
-    if (stage === 'regional' && rec && STAGE_ORDER[rec.reached] < STAGE_ORDER.area) {
-      reasons.push('You must advance out of an Area Qualifier before a Regional.');
+    // Area Qualifiers are intentionally NOT region-locked. Riders may chase as
+    // many Area Qualifiers in as many regions as budget/calendar allow.
+    if (stage === 'regional' && rec && evRegion && !rec.areaQualifiedRegions.includes(evRegion)) {
+      reasons.push(`You must advance from an Area Qualifier in the ${evRegion} region before entering that Regional.`);
     }
-    if (stage === 'national' && rec && STAGE_ORDER[rec.reached] < STAGE_ORDER.regional) {
-      reasons.push('Loretta’s is invite-only — you have to qualify through a Regional.');
+    if (stage === 'national' && rec && rec.regionalQualifications.filter((q) => q.qualified).length === 0) {
+      reasons.push('Loretta’s is invite-only — qualify through a Regional Championship first.');
     }
 
-    return { ok: reasons.length === 0, stage, region: evRegion, reasons };
+    return {
+      ok: reasons.length === 0,
+      stage,
+      region: evRegion,
+      reasons,
+      transferSpots: stage === 'national' ? 0 : advancementSlots(stage, evRegion),
+      motos: stage === 'regional' ? regionalMotoCount(evRegion) : STAGE_INFO[stage].motos,
+    };
   }
 
-  // ---- #25/#58 advancement -------------------------------------------------
-  // Record a finish at a stage. Returns { stage, advanced, finish, milestones, eliminated }.
-  // Top `advanceSlots` finishers advance; anyone else is eliminated for the year
-  // at that stage (but may try another Area Qualifier — see followUpChoices).
-  recordAttempt(event, { klass, region, finish, fieldSize = 30, day = null, eventName } = {}) {
+  recordAttempt(event, { klass, region, finish, fieldSize = 30, day = null, eventName, homeRegion = null, numericFinish = true } = {}) {
     const stage = classifyEvent(event);
     if (!stage) return null;
     const rec = this._class(klass);
-    const evRegion = event.region ?? region ?? rec.region ?? null;
-    if (!rec.region && evRegion) rec.region = evRegion; // lock region on first attempt
+    if (homeRegion && !rec.homeRegion) rec.homeRegion = homeRegion;
+    const evRegion = event.region ?? region ?? null;
     if (rec.dreamState === 'dormant') rec.dreamState = 'chasing';
 
-    const slots = STAGE_INFO[stage].advanceSlots;
-    const advanced = stage === 'national' ? false : finish != null && finish <= slots;
+    const slots = stage === 'national' ? 0 : advancementSlots(stage, evRegion);
+    const advanced = stage !== 'national'
+      && numericFinish !== false
+      && finish != null
+      && slots != null
+      && finish <= slots;
     const name = eventName ?? event.name ?? STAGE_INFO[stage].label;
-
-    const attempt = { stage, region: evRegion, klass, finish, fieldSize, day, eventName: name, advanced, season: null };
+    const attempt = {
+      stage, region: evRegion, klass, finish, fieldSize, day, eventName: name,
+      advanced, numericFinish: numericFinish !== false, transferSpots: slots, season: null,
+    };
     rec.attempts.push(attempt);
 
     const emitted = [];
@@ -131,7 +168,6 @@ export class LorettasPath {
       emitted.push(m);
     };
 
-    // ---- milestone descriptors (#31/#61) ----
     if (stage === 'area' && rec.attempts.filter((a) => a.stage === 'area').length === 1) {
       fire('first_area_attempt', true, {
         title: 'First Shot at the Dream', importance: 68,
@@ -140,45 +176,51 @@ export class LorettasPath {
       });
     }
 
-    if (advanced) {
-      // `reached` tracks the furthest CLEARED stage: winning through an Area
-      // sets it to 'area', through a Regional to 'regional'.
-      rec.reached = stage;
-      if (stage === 'area') {
-        rec.dreamState = 'area_qualified';
-        fire('first_regional_qual', true, {
-          title: 'Punched a Regional Ticket', importance: 80,
-          emotion: ['pride', 'relief', 'joy'], tags: ['first_time', 'lorettas', 'regional', 'milestone'],
-          summary: `You advanced out of the ${evRegion} Area Qualifier — a Regional Championship is next. The dream is real.`,
-        });
-      } else if (stage === 'regional') {
-        rec.dreamState = 'regional_qualified';
-        fire('first_national_qual', true, {
-          title: "You're Going to the Ranch", importance: 94,
-          emotion: ['joy', 'disbelief', 'pride'], tags: ['first_time', 'lorettas', 'national', 'championship', 'milestone'],
-          summary: `You qualified for Loretta Lynn’s. Out of everyone in ${evRegion}, you made it to the Ranch.`,
-        });
-      }
+    if (advanced && stage === 'area') {
+      uniquePush(rec.areaQualifiedRegions, evRegion);
+      rec.reached = STAGE_ORDER[rec.reached] < STAGE_ORDER.area ? 'area' : rec.reached;
+      rec.region ??= evRegion;
+      rec.eliminated = false;
+      rec.dreamState = 'area_qualified';
+      fire('first_regional_qual', true, {
+        title: 'Punched a Regional Ticket', importance: 80,
+        emotion: ['pride', 'relief', 'joy'], tags: ['first_time', 'lorettas', 'regional', 'milestone'],
+        summary: `You advanced from an Area Qualifier in the ${evRegion} region. That region’s Regional Championship is now available.`,
+      });
+    } else if (advanced && stage === 'regional') {
+      const existing = rec.regionalQualifications.find((q) => q.region === evRegion);
+      const qualification = { region: evRegion, finish, day, qualified: true };
+      if (!existing) rec.regionalQualifications.push(qualification);
+      else Object.assign(existing, qualification);
+      rec.reached = 'regional';
+      rec.eliminated = false;
+      rec.dreamState = 'regional_qualified';
+      rec.selectedNationalRegion = selectNationalSourceRegion(rec.regionalQualifications, rec.homeRegion);
+      fire('first_national_qual', true, {
+        title: "You're Going to the Ranch", importance: 94,
+        emotion: ['joy', 'disbelief', 'pride'], tags: ['first_time', 'lorettas', 'national', 'championship', 'milestone'],
+        summary: `You qualified for Loretta Lynn’s through the ${evRegion} Regional.`,
+      });
     } else if (stage !== 'national') {
-      // Missed advancement. "By one spot" is its own particular heartbreak.
+      rec.eliminated = true;
       if (finish === slots + 1) {
         fire(`missed_by_one_${stage}`, false, {
           title: 'One Spot Short', importance: 76,
           emotion: ['heartbreak', 'anger', 'resolve'], tags: ['lorettas', 'heartbreak', 'near_miss'],
-          summary: `${finish}th at the ${STAGE_INFO[stage].label}. The last transfer spot was ${slots}th. One position from advancing.`,
+          summary: `${ordinalish(finish)} at the ${STAGE_INFO[stage].label}. The guaranteed transfer ended at ${ordinalish(slots)}.`,
         });
       }
-      rec.eliminated = true;
-      rec.dreamState = rec.reached === 'none' ? 'eliminated' : rec.dreamState;
+      if (rec.reached === 'none') rec.dreamState = 'eliminated';
     }
 
-    // National-stage results are about the moment, not advancement.
     if (stage === 'national') {
+      rec.reached = 'national';
+      rec.eliminated = false;
       rec.dreamState = 'national_qualified';
       fire('first_national_moto', true, {
         title: 'A Loretta’s Moto', importance: 88,
         emotion: ['awe', 'nerves', 'pride'], tags: ['first_time', 'lorettas', 'national', 'milestone'],
-        summary: `You dropped the gate at Loretta Lynn’s — ${finish != null ? ordinalish(finish) + ' in the moto' : 'a moto at the Ranch'}. Not everyone gets here.`,
+        summary: `You dropped the gate at Loretta Lynn’s${finish != null ? ` and finished ${ordinalish(finish)}` : ''}.`,
       });
       const prevBest = rec.bestNational ?? Infinity;
       if (finish != null && finish < prevBest) {
@@ -187,140 +229,118 @@ export class LorettasPath {
           fire('national_championship', true, {
             title: 'Loretta Lynn’s Champion', importance: 100,
             emotion: ['euphoria', 'tears', 'legacy'], tags: ['lorettas', 'national', 'championship', 'milestone', 'legacy'],
-            summary: `A National Championship at Loretta Lynn’s. This is the memory a whole life of racing is measured against.`,
+            summary: 'A National Championship at Loretta Lynn’s — a life-defining motocross memory.',
           });
         } else if (finish <= 5) {
-          fire(`national_top5`, false, {
+          fire('national_top5', false, {
             title: 'Top Five at the Ranch', importance: 90,
             emotion: ['pride', 'joy'], tags: ['lorettas', 'national', 'milestone'],
-            summary: `${ordinalish(finish)} overall at Loretta Lynn’s — a top-five against the best amateurs in the country.`,
+            summary: `${ordinalish(finish)} at Loretta Lynn’s — top five against the best amateurs in the country.`,
           });
         }
       }
-      // Painful near-miss podiums at the Ranch.
       if (finish === 4) {
         fire('national_heartbreak', false, {
           title: 'Fourth at the Ranch', importance: 82,
           emotion: ['heartbreak', 'pride'], tags: ['lorettas', 'national', 'heartbreak'],
-          summary: `Fourth at Loretta Lynn’s — off the podium by one spot at the biggest race of the year.`,
+          summary: 'Fourth at Loretta Lynn’s — off the podium by one spot.',
         });
       }
     }
 
-    return { stage, advanced, finish, region: evRegion, nextStage: STAGE_INFO[stage].next, milestones: emitted, eliminated: rec.eliminated };
+    return {
+      stage, advanced, finish, region: evRegion, nextStage: STAGE_INFO[stage].next,
+      transferSpots: slots, milestones: emitted, eliminated: rec.eliminated,
+      selectedNationalRegion: rec.selectedNationalRegion,
+    };
   }
 
-  // ---- advancement status (per class) -------------------------------------
   advancementStatus(klass) {
     const rec = this._class(klass);
+    const nationalQualified = rec.regionalQualifications.some((q) => q.qualified);
     return {
       klass,
       reached: rec.reached,
-      region: rec.region,
+      region: rec.selectedNationalRegion ?? rec.region,
+      homeRegion: rec.homeRegion,
       dreamState: rec.dreamState,
       eliminated: rec.eliminated,
-      areaCleared: STAGE_ORDER[rec.reached] >= STAGE_ORDER.area,
-      regionalCleared: STAGE_ORDER[rec.reached] >= STAGE_ORDER.regional,
-      qualifiedForNational: STAGE_ORDER[rec.reached] >= STAGE_ORDER.regional,
+      areaCleared: rec.areaQualifiedRegions.length > 0,
+      regionalCleared: nationalQualified,
+      qualifiedForNational: nationalQualified,
+      areaQualifiedRegions: [...rec.areaQualifiedRegions],
+      regionalQualifiedRegions: rec.regionalQualifications.filter((q) => q.qualified).map((q) => q.region),
+      regionalQualifications: rec.regionalQualifications.map((q) => ({ ...q })),
+      selectedNationalRegion: rec.selectedNationalRegion,
       bestNational: rec.bestNational ?? null,
       attempts: rec.attempts.length,
     };
   }
 
-  // ---- #62 planner warnings ------------------------------------------------
-  // Inspect a set of selected season events against a Loretta's goal for `klass`.
-  // Returns structured, severity-tagged warnings with suggested next actions.
   pathWarnings(selectedEvents = [], { klass, hasLorettaGoal = false } = {}) {
     const warnings = [];
-    const staged = selectedEvents
-      .map((e) => ({ e, stage: classifyEvent(e) }))
-      .filter((x) => x.stage);
-    const has = (s) => staged.some((x) => x.stage === s);
+    const staged = selectedEvents.map((e) => ({ e, stage: classifyEvent(e) })).filter((x) => x.stage);
     const rec = klass ? this._class(klass) : null;
-    const areaCleared = rec && STAGE_ORDER[rec.reached] >= STAGE_ORDER.area;
-    const regionalCleared = rec && STAGE_ORDER[rec.reached] >= STAGE_ORDER.regional;
+    const areas = staged.filter((x) => x.stage === 'area');
+    const regionals = staged.filter((x) => x.stage === 'regional');
+    const nationals = staged.filter((x) => x.stage === 'national');
 
-    if (hasLorettaGoal && !has('area') && !areaCleared) {
-      warnings.push({
-        severity: 'high', code: 'no_area_qualifier',
-        message: 'Your Loretta’s goal has no Area Qualifier on the schedule — there’s no way onto the path.',
-        action: 'Add an Area Qualifier to your season.',
-      });
+    if (hasLorettaGoal && !areas.length && !(rec?.areaQualifiedRegions?.length)) {
+      warnings.push({ severity: 'high', code: 'no_area_qualifier', message: 'Your Loretta’s goal has no Area Qualifier on the schedule.', action: 'Add at least one Area Qualifier.' });
     }
-    // Class eligibility (#62).
     if (hasLorettaGoal && klass && !LORETTA_CLASSES.includes(klass)) {
-      warnings.push({
-        severity: 'high', code: 'class_ineligible',
-        message: `${klass} can’t chase Loretta’s — no qualifying class for it.`,
-        action: 'Change class strategy or set a different goal.',
-      });
+      warnings.push({ severity: 'high', code: 'class_ineligible', message: `${klass} isn’t supported as a Loretta’s class in current game data.`, action: 'Choose an eligible class.' });
     }
-    // Skipping a stage you haven't earned (#62 impossible sequence).
-    if (has('regional') && !has('area') && !areaCleared) {
-      warnings.push({
-        severity: 'high', code: 'regional_unqualified',
-        message: 'You’ve planned a Regional but no Area Qualifier to reach it — that Regional can’t be entered.',
-        action: 'Add an Area Qualifier before the Regional, or drop the Regional.',
-      });
+
+    // A Regional must be fed by an Area advancement in that same region. A
+    // planned Area in that region is enough for planner validation because the
+    // player may not have raced it yet.
+    for (const { e: reg } of regionals) {
+      const sameRegionAreaPlanned = areas.some(({ e }) => e.region === reg.region && eventTime(e) < eventTime(reg));
+      const sameRegionAreaCleared = rec?.areaQualifiedRegions?.includes(reg.region);
+      if (!sameRegionAreaPlanned && !sameRegionAreaCleared) {
+        warnings.push({
+          severity: 'high', code: 'regional_unqualified', region: reg.region,
+          message: `${reg.region} Regional has no earlier Area Qualifier path in that region.`,
+          action: `Add an earlier ${reg.region} Area Qualifier or remove the Regional.`,
+        });
+      }
     }
-    if (has('national') && !has('regional') && !regionalCleared) {
-      warnings.push({
-        severity: 'high', code: 'national_unqualified',
-        message: 'Loretta’s National is on your plan without a Regional to qualify through.',
-        action: 'You can’t enter Loretta’s directly — qualify through a Regional first.',
-      });
+
+    if (nationals.length && !regionals.length && !(rec?.regionalQualifications?.some((q) => q.qualified))) {
+      warnings.push({ severity: 'high', code: 'national_unqualified', message: 'Loretta’s National is on the plan without a Regional qualification path.', action: 'Qualify through a Regional first.' });
     }
-    // Region split — qualifiers in different regions don't chain.
-    const regions = new Set(staged.map((x) => x.e.region).filter(Boolean));
-    if (regions.size > 1) {
-      warnings.push({
-        severity: 'medium', code: 'region_split',
-        message: `Your qualifiers span ${regions.size} regions (${[...regions].join(', ')}). Advancement stays within one region.`,
-        action: 'Focus your qualifiers in a single region.',
-      });
-    }
-    // Ordering: an Area Qualifier scheduled after a Regional can't feed it.
-    const areas = staged.filter((x) => x.stage === 'area').map((x) => x.e.day ?? 0);
-    const regs = staged.filter((x) => x.stage === 'regional').map((x) => x.e.day ?? 0);
-    if (areas.length && regs.length && Math.min(...areas) > Math.min(...regs)) {
-      warnings.push({
-        severity: 'medium', code: 'bad_sequence',
-        message: 'Your Regional is scheduled before your Area Qualifier — the dates don’t chain.',
-        action: 'Pick an Area Qualifier that runs before the Regional.',
-      });
-    }
+
+    // Multiple Area regions are valid and intentionally generate NO warning.
     return warnings;
   }
 
-  // ---- #25 failure follow-ups ---------------------------------------------
-  // After an elimination, what can the player do about it?
   followUpChoices(klass) {
     const rec = this._class(klass);
     if (!rec.eliminated) return [];
-    return [
-      { id: 'retry_area', label: 'Try another Area Qualifier', blurb: 'Another region, another shot — if budget and time allow.' },
-      { id: 'focus_local', label: 'Focus on local racing', blurb: 'Rack up wins and points close to home this year.' },
-      { id: 'save_money', label: 'Save for next season', blurb: 'Bank the travel money and come back stronger.' },
-      { id: 'train_harder', label: 'Train harder', blurb: 'Turn the disappointment into off-season fitness and skill.' },
-      { id: 'change_class', label: 'Change bike / class strategy', blurb: 'Move up or reposition for a better qualifying path.' },
+    const choices = [
+      { id: 'retry_area', label: 'Try another Area Qualifier', blurb: 'Another Area — even in another region — is allowed if budget, timing, and class eligibility work.' },
+      { id: 'focus_local', label: 'Focus on local racing', blurb: 'Build speed, confidence, and reputation close to home.' },
+      { id: 'save_money', label: 'Save for next season', blurb: 'Stop the travel spend and come back stronger.' },
+      { id: 'train_harder', label: 'Train harder', blurb: 'Turn the disappointment into a focused training block.' },
+      { id: 'change_class', label: 'Change bike / class strategy', blurb: 'Re-evaluate the bike and class without assuming automatic upward progression.' },
     ];
+    if (rec.areaQualifiedRegions.length > rec.regionalQualifications.filter((q) => q.qualified).length) {
+      choices.unshift({ id: 'try_other_regional', label: 'Race another qualified Regional', blurb: 'If you advanced from an Area in another region, that Regional path may still be alive.' });
+    }
+    return choices;
   }
 
-  // ---- #61 dream status summary (for phone / internet UI) -----------------
   dreamSummary() {
-    const classes = Object.entries(this.byClass).map(([klass, rec]) => ({
-      klass, reached: rec.reached, region: rec.region, dreamState: rec.dreamState,
-      eliminated: rec.eliminated, attempts: rec.attempts.length, bestNational: rec.bestNational ?? null,
-    }));
-    const furthest = classes.reduce((best, c) => (STAGE_ORDER[c.reached] > STAGE_ORDER[best?.reached ?? 'none'] ? c : best), null);
-    const totalAttempts = classes.reduce((a, c) => a + c.attempts, 0);
+    const classes = Object.entries(this.byClass).map(([klass]) => this.advancementStatus(klass));
+    const furthest = classes.reduce((best, c) => STAGE_ORDER[c.reached] > STAGE_ORDER[best?.reached ?? 'none'] ? c : best, null);
     return {
       active: classes.some((c) => c.dreamState !== 'dormant'),
       furthestStage: furthest?.reached ?? 'none',
       furthestClass: furthest?.klass ?? null,
-      region: furthest?.region ?? null,
-      qualifiedForNational: classes.some((c) => STAGE_ORDER[c.reached] >= STAGE_ORDER.regional),
-      totalAttempts,
+      region: furthest?.selectedNationalRegion ?? furthest?.region ?? null,
+      qualifiedForNational: classes.some((c) => c.qualifiedForNational),
+      totalAttempts: classes.reduce((sum, c) => sum + c.attempts, 0),
       classes,
       milestoneCount: this.milestones.length,
       headline: this._headline(furthest),
@@ -330,29 +350,40 @@ export class LorettasPath {
   _headline(furthest) {
     if (!furthest || furthest.reached === 'none') {
       const chasing = Object.values(this.byClass).some((r) => r.dreamState === 'chasing' || r.eliminated);
-      return chasing ? 'The dream is alive — still chasing that first transfer.' : 'The Road to Loretta’s hasn’t started yet.';
+      return chasing ? 'Still chasing that first Area transfer.' : 'The Road to Loretta’s hasn’t started yet.';
     }
-    if (furthest.reached === 'regional') return `Qualified for Loretta Lynn’s in ${furthest.klass}. See you at the Ranch.`;
-    if (furthest.reached === 'area') return `Through the ${furthest.region} Area in ${furthest.klass} — Regional next.`;
+    if (furthest.qualifiedForNational) return `Qualified for Loretta Lynn’s in ${furthest.klass}. See you at the Ranch.`;
+    if (furthest.areaCleared) return `Area transfer earned in ${furthest.klass} — Regional next.`;
     return 'On the Road to Loretta’s.';
   }
 
-  // ---- serialization -------------------------------------------------------
   toJSON() {
-    return { byClass: this.byClass, milestones: this.milestones, seen: [...this._seen] };
+    return { homeRegion: this.homeRegion, byClass: this.byClass, milestones: this.milestones, seen: [...this._seen] };
   }
+
   static fromJSON(data) {
-    const p = new LorettasPath();
+    const p = new LorettasPath({ homeRegion: data?.homeRegion ?? null });
     if (!data) return p;
-    p.byClass = data.byClass ?? {};
+    p.byClass = Object.fromEntries(Object.entries(data.byClass ?? {}).map(([klass, rec]) => [klass, hydrateRecord(rec)]));
     p.milestones = data.milestones ?? [];
     p._seen = new Set(data.seen ?? []);
     return p;
   }
 }
 
-// Tiny local ordinal (kept here so the module stays dependency-free).
+function eventTime(event) {
+  if (event?.date) {
+    const t = Date.parse(event.date);
+    if (!Number.isNaN(t)) return t;
+  }
+  if (event?.day != null) return Number(event.day);
+  if (event?.week != null) return Number(event.week) * 7;
+  return 0;
+}
+
 function ordinalish(n) {
-  const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  if (n == null) return '';
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
