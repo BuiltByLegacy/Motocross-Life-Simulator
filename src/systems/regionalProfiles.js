@@ -94,6 +94,89 @@ export const NORTHEAST_PROFILE = assertRegionalProfile({
   },
 });
 
+export const SOUTHEAST_PROFILE = assertRegionalProfile({
+  id: 'southeast',
+  name: 'Southeast',
+  geography: {
+    // Game-content footprint for Region #2. This is not presented as the official AMA regional boundary.
+    states: ['NC', 'SC', 'GA', 'FL', 'AL', 'TN'],
+    density: 'broad-multi-state-corridor',
+    notes: [
+      'larger north-south travel spread than the Northeast reference region',
+      'Florida-to-Tennessee travel creates meaningful long-haul amateur decisions',
+      '2026 Road to Loretta stops span GA, SC, NC, FL, AL and TN',
+    ],
+  },
+  climate: {
+    type: 'warm-humid-subtropical-dominant',
+    winter: 'mild-and-ridable-in-many-locations',
+    spring: 'high-event-density-with-rain-risk',
+    summer: 'heat-humidity-thunderstorm-pressure',
+    fall: 'warm-with-tropical-storm-risk',
+  },
+  ridingSeason: {
+    openMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    peakMonths: [1, 2, 3, 4, 10, 11, 12],
+    summerTradeoff: 'rideable-but-heat-and-heavy-rain-risk-rise',
+  },
+  surfaces: ['sand', 'loam', 'clay', 'red-clay', 'mixed-hardpack'],
+  eventCulture: {
+    cadence: 'frequent-long-season-weekends',
+    density: 'high-with-early-year-qualifier-pressure',
+    prestige: ['local-series', 'regional-amateur', 'road-to-lorettas', 'training-destination-events'],
+  },
+  travel: {
+    typicalPattern: 'day-trip-to-long-haul',
+    bands: { local: 140, overnight: 300, regional: 650, longHaul: 651 },
+    tollSensitivity: 'low-to-moderate',
+    distancePressure: 'high-for-cross-state-programs',
+  },
+  economy: {
+    entryFeeRange: [40, 100],
+    gateFeeRange: [15, 45],
+    lodgingPressure: 'moderate-to-high-for-travel-programs',
+    fuelPressure: 'high-when-chasing-region-wide-events',
+  },
+  practiceCulture: {
+    style: 'long-season-open-practice-training-and-race-prep',
+    seasonality: 'lower-than-northeast',
+  },
+  supportEcosystem: {
+    style: 'dealer-shop-local-team-and-training-network',
+    relationshipWeight: 'high',
+    factoryAccess: 'earned-through-results-and-visibility',
+  },
+  competitionCulture: {
+    fieldShape: 'large-mixed-local-and-traveling-amateur-fields',
+    identity: ['heat-adaptive', 'sand-and-clay-versatile', 'travel-program-oriented'],
+  },
+  weatherDisruptions: ['heavy-rain', 'thunderstorm', 'heat', 'humidity', 'tropical-storm', 'mud'],
+  lorettaRouting: {
+    regionName: 'Southeast',
+    areaToRegional: 'same-region-advancement',
+    regionalToNational: 'official-current-rules-data',
+    reference2026: {
+      areaQualifiers: 8,
+      areaAdvanceGuaranteed: 9,
+      regionalAdvanceGuaranteed: 6,
+      amateurRegional: 'Muddy Creek, TN',
+      youthRegional: 'Gatorback, FL',
+    },
+  },
+  research: {
+    status: 'research-gate-approved',
+    reviewedAt: '2026-08-26',
+    sources: [
+      'https://mxsports.com/events',
+      'https://mxsports.com/how-to-qualify',
+      'https://mxsports.com/supplemental-rules',
+      'https://mxsports.com/2025/12/11/2026-ama-amateur-national-motocross-area-qualifier-and-regional-championship-dates',
+      'https://repository.library.noaa.gov/view/noaa/56807/noaa_56807_DS1.pdf',
+      'https://toolkit.climate.gov/region/southeast/previous-content',
+    ],
+  },
+});
+
 export function createRegionalRuntime(profile) {
   assertRegionalProfile(profile);
   return {
