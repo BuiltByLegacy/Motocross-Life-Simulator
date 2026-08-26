@@ -29,6 +29,11 @@ Every region must document:
 
 A future region is not considered implementation-ready until `validateRegionalProfile()` passes and its research sources are documented.
 
+## Approved researched profiles
+
+- **Northeast** — reference region and first deeply modeled career world.
+- **Southeast** — Region #2 research gate approved in [`SOUTHEAST_REGIONAL_RESEARCH.md`](./SOUTHEAST_REGIONAL_RESEARCH.md). The research profile authorizes implementation through child issue #319; it does not imply that Southeast gameplay is complete.
+
 ## Northeast assumptions audited
 
 The current Northeast vertical slice contains several assumptions that must not become universal defaults:
