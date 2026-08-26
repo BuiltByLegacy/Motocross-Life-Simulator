@@ -25,6 +25,19 @@ function rangeLabel(game, week) {
   return dateRangeForWeek(continuousCalendar(game), week)?.label ?? `Calendar period ${week}`;
 }
 
+export function continuousPlannerPeriods(game) {
+  const pool = game.eventPool();
+  return Array.from({ length: 12 }, (_, i) => {
+    const week = i + 1;
+    return {
+      week,
+      range: rangeLabel(game, week),
+      events: pool[week] ?? [],
+      isOpen: !(pool[week]?.length),
+    };
+  });
+}
+
 function replaceText(root, matcher, replacement) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const nodes = [];
@@ -51,17 +64,17 @@ export function installCalendar2PlannerPatch(App) {
 
   App.prototype.viewProgramBuilder = function patchedProgramBuilder(edit) {
     const g = this.game;
-    const pool = g.eventPool();
-    const periods = Array.from({ length: 12 }, (_, i) => i + 1);
+    const periods = continuousPlannerPeriods(g);
     const sel = this._programSel;
     const levelChip = (lvl) => h('span', { class: 'sp-tier ' + lvl }, lvl);
-    const cost = periods.reduce((sum, w) => {
-      const ev = (pool[w] ?? []).find((e) => e.id === sel[w]);
+    const cost = periods.reduce((sum, period) => {
+      const ev = period.events.find((e) => e.id === sel[period.week]);
       return sum + (ev ? ev.entry : 0);
     }, 0);
 
-    const periodBlock = (w) => {
-      const opts = pool[w] ?? [];
+    const periodBlock = (period) => {
+      const w = period.week;
+      const opts = period.events;
       const locked = edit && w < g.week;
       const rows = opts.map((ev) => h('button', {
         class: 'prog-opt' + (sel[w] === ev.id ? ' on' : '') + (locked ? ' locked' : ''),
@@ -87,7 +100,7 @@ export function installCalendar2PlannerPatch(App) {
       }
 
       return h('div', { class: 'prog-week', 'data-calendar-week': String(w) },
-        h('div', { class: 'prog-week-head' }, rangeLabel(g, w), locked ? h('span', { class: 'faint small' }, ' (completed)') : null),
+        h('div', { class: 'prog-week-head' }, period.range, locked ? h('span', { class: 'faint small' }, ' (completed)') : null),
         ...rows,
       );
     };
