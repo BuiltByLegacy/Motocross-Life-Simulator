@@ -1,10 +1,16 @@
 // Entry point. Boots the app into #app.
 import { App } from './ui.js';
+import { installCalendar2PlannerPatch } from './calendar2PlannerPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
 const DIAG_KEY = 'legacy_mx_diag';
 const CONSENT_KEY = 'legacy_mx_analytics_consent';
+
+// Calendar 2.0 live planner regression fix (#337). Install before the App is
+// constructed so every rendered career-calendar screen uses the continuous,
+// date-first presentation.
+installCalendar2PlannerPatch(App);
 
 // Local, privacy-safe crash/error logging (#246). Loaded before the app so an
 // error during boot is still captured. Persists to its own localStorage key,
