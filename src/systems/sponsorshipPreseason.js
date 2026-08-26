@@ -27,19 +27,8 @@ export function createSponsorshipState({ seasonYear, maxPitches = DEFAULT_MAX_PI
 }
 
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
-
-function stableHash(input) {
-  let h = 2166136261;
-  for (let i = 0; i < input.length; i += 1) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function deterministicUnit(seed) {
-  return stableHash(String(seed)) / 0xffffffff;
-}
+function stableHash(input) { let h = 2166136261; for (let i = 0; i < input.length; i += 1) { h ^= input.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function deterministicUnit(seed) { return stableHash(String(seed)) / 0xffffffff; }
 
 export function riderSponsorProfile(rider = {}) {
   const results = clamp(Number(rider.results ?? rider.resultScore ?? 0), 0, 100);
@@ -48,18 +37,7 @@ export function riderSponsorProfile(rider = {}) {
   const visibility = clamp(Number(rider.visibility ?? rider.media ?? 0), 0, 100);
   const relationship = clamp(Number(rider.relationship ?? rider.dealerRelationship ?? 0), 0, 100);
   const local = clamp(Number(rider.localReputation ?? reputation), 0, 100);
-  return {
-    age: Number(rider.age ?? 16),
-    className: rider.className ?? rider.class ?? 'unknown',
-    region: String(rider.region ?? 'northeast').toLowerCase(),
-    results,
-    reputation,
-    professionalism,
-    visibility,
-    relationship,
-    local,
-    profileScore: Math.round(results * 0.30 + reputation * 0.22 + professionalism * 0.18 + visibility * 0.12 + relationship * 0.10 + local * 0.08),
-  };
+  return { age: Number(rider.age ?? 16), className: rider.className ?? rider.class ?? 'unknown', region: String(rider.region ?? 'northeast').toLowerCase(), results, reputation, professionalism, visibility, relationship, local, profileScore: Math.round(results * 0.30 + reputation * 0.22 + professionalism * 0.18 + visibility * 0.12 + relationship * 0.10 + local * 0.08) };
 }
 
 export function sponsorFitScore(sponsor, rider = {}) {
@@ -73,20 +51,10 @@ export function sponsorFitScore(sponsor, rider = {}) {
 
 export function discoverSponsorCandidates(rider, state = createSponsorshipState()) {
   const p = riderSponsorProfile(rider);
-  return SPONSOR_CATALOG
-    .map((sponsor) => ({
-      ...sponsor,
-      fitScore: sponsorFitScore(sponsor, p),
-      previouslyContacted: !!state.contactHistory?.[sponsor.id],
-      eligibility: sponsorFitScore(sponsor, p) >= Math.max(8, sponsor.minProfile - 16) ? 'eligible' : 'stretch',
-    }))
-    .filter((candidate) => candidate.regions.includes(p.region))
-    .sort((a, b) => b.fitScore - a.fitScore || a.tier - b.tier);
+  return SPONSOR_CATALOG.map((sponsor) => ({ ...sponsor, fitScore: sponsorFitScore(sponsor, p), previouslyContacted: !!state.contactHistory?.[sponsor.id], eligibility: sponsorFitScore(sponsor, p) >= Math.max(8, sponsor.minProfile - 16) ? 'eligible' : 'stretch' })).filter((candidate) => candidate.regions.includes(p.region)).sort((a, b) => b.fitScore - a.fitScore || a.tier - b.tier);
 }
 
 function responseType({ fitScore, profileScore, roll, sponsor }) {
-  // Early riders should hear no frequently. A strong fit improves the ceiling,
-  // but a low-profile rider can still receive product support or a counter.
   const strength = fitScore * 0.68 + profileScore * 0.32 + (roll - 0.5) * 34;
   if (strength < 24) return 'decline';
   if (strength < 34) return 'soft-decline';
@@ -121,7 +89,6 @@ export function pitchSponsor(state, { sponsorId, rider, careerSeed = 'career', p
   if (!sponsor) throw new Error(`Unknown sponsor: ${sponsorId}`);
   const gate = canPitchSponsor(state, sponsorId);
   if (!gate.ok) return { state, response: null, error: gate.reason };
-
   const p = riderSponsorProfile(rider);
   const fitScore = sponsorFitScore(sponsor, p);
   const guardianRequired = p.age < 18;
@@ -130,28 +97,9 @@ export function pitchSponsor(state, { sponsorId, rider, careerSeed = 'career', p
   const adjustedFit = clamp(fitScore + (quality - 50) * 0.16, 0, 100);
   const type = responseType({ fitScore: adjustedFit, profileScore: p.profileScore, roll, sponsor });
   const support = buildSupport(sponsor, type, adjustedFit);
-  const response = {
-    sponsorId,
-    sponsorName: sponsor.name,
-    category: sponsor.category,
-    seasonYear: state.seasonYear,
-    fitScore,
-    proposalQuality: quality,
-    type,
-    support,
-    guardianRequired,
-    accepted: false,
-  };
+  const response = { sponsorId, sponsorName: sponsor.name, category: sponsor.category, seasonYear: state.seasonYear, fitScore, proposalQuality: quality, type, support, guardianRequired, accepted: false };
   const attempt = { sponsorId, seasonYear: state.seasonYear, fitScore, proposalQuality: quality, type };
-  const next = {
-    ...state,
-    attempts: [...state.attempts, attempt],
-    responses: [...state.responses, response],
-    contactHistory: {
-      ...state.contactHistory,
-      [sponsorId]: { lastSeason: state.seasonYear, lastOutcome: type, contacts: (state.contactHistory?.[sponsorId]?.contacts ?? 0) + 1 },
-    },
-  };
+  const next = { ...state, attempts: [...state.attempts, attempt], responses: [...state.responses, response], contactHistory: { ...state.contactHistory, [sponsorId]: { lastSeason: state.seasonYear, lastOutcome: type, contacts: (state.contactHistory?.[sponsorId]?.contacts ?? 0) + 1 } } };
   return { state: next, response, error: null };
 }
 
@@ -161,14 +109,7 @@ export function acceptSponsorResponse(state, sponsorId) {
   if (['decline', 'soft-decline'].includes(response.type)) return { state, error: 'not-an-offer' };
   if (state.acceptedSupport.some((s) => s.sponsorId === sponsorId)) return { state, error: 'already-accepted' };
   const accepted = { ...response, accepted: true };
-  return {
-    error: null,
-    state: {
-      ...state,
-      responses: state.responses.map((r) => r === response ? accepted : r),
-      acceptedSupport: [...state.acceptedSupport, accepted],
-    },
-  };
+  return { error: null, state: { ...state, responses: state.responses.map((r) => r === response ? accepted : r), acceptedSupport: [...state.acceptedSupport, accepted] } };
 }
 
 export function sponsorshipFundingSummary(state, { tentativeSeasonCost = 0, familyCash = 0 } = {}) {
@@ -177,22 +118,18 @@ export function sponsorshipFundingSummary(state, { tentativeSeasonCost = 0, fami
   const productValue = accepted.reduce((sum, s) => sum + (s.support?.productValue ?? 0), 0);
   const contingencyPotential = accepted.reduce((sum, s) => sum + (s.support?.contingency ?? 0), 0);
   const guaranteedFunds = Number(familyCash) + sponsorCash;
-  return {
-    tentativeSeasonCost: Number(tentativeSeasonCost),
-    familyCash: Number(familyCash),
-    sponsorCash,
-    productValue,
-    contingencyPotential,
-    guaranteedFunds,
-    fundingGap: Math.max(0, Number(tentativeSeasonCost) - guaranteedFunds),
-    familyOutOfPocketIfLocked: Math.max(0, Number(tentativeSeasonCost) - sponsorCash),
-  };
+  return { tentativeSeasonCost: Number(tentativeSeasonCost), familyCash: Number(familyCash), sponsorCash, productValue, contingencyPotential, guaranteedFunds, fundingGap: Math.max(0, Number(tentativeSeasonCost) - guaranteedFunds), familyOutOfPocketIfLocked: Math.max(0, Number(tentativeSeasonCost) - sponsorCash) };
 }
 
-export function serializeSponsorshipState(state) {
-  return JSON.parse(JSON.stringify(state));
-}
+export function serializeSponsorshipState(state) { return JSON.parse(JSON.stringify(state)); }
 
 export function restoreSponsorshipState(raw) {
-  return createSponsorshipState({ seasonYear: raw?.seasonYear, maxPitches: raw?.maxPitches ?? DEFAULT_MAX_PITCHES, ...raw });
+  const base = createSponsorshipState({ seasonYear: raw?.seasonYear, maxPitches: raw?.maxPitches ?? DEFAULT_MAX_PITCHES });
+  return {
+    ...base,
+    attempts: Array.isArray(raw?.attempts) ? raw.attempts : [],
+    responses: Array.isArray(raw?.responses) ? raw.responses : [],
+    acceptedSupport: Array.isArray(raw?.acceptedSupport) ? raw.acceptedSupport : [],
+    contactHistory: raw?.contactHistory && typeof raw.contactHistory === 'object' ? raw.contactHistory : {},
+  };
 }
