@@ -5,6 +5,10 @@
   "type": "module",
   "description": "Motocross: Chasing the Dream — a sports life-simulation RPG prototype.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
   }
 }
