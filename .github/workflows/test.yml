@@ -23,5 +23,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Run test suite
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run unit test suite
         run: npm test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser E2E
+        run: npm run test:e2e
