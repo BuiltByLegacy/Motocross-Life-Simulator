@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test('Sponsorship 2.0 survives preseason, calendar, garage, save/reload and renewal branches', async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear());
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
+  await page.waitForFunction(() => !!window.__legacy);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
   await page.waitForFunction(() => !!window.__legacy);
 
   await page.evaluate(() => {
@@ -27,7 +29,7 @@ test('Sponsorship 2.0 survives preseason, calendar, garage, save/reload and rene
 
   await page.evaluate(async () => {
     const app = window.__legacy;
-    const s2 = await import('/src/systems/sponsorship2.js');
+    const s2 = await import(new URL('src/systems/sponsorship2.js', document.baseURI).href);
     let state = app.game.state.sponsorship2;
     state.pursuit.responses.push({
       sponsorId: 'declined-local', sponsorName: 'Declined Local Shop', seasonYear: app.game.seasonYear,
@@ -76,10 +78,10 @@ test('Sponsorship 2.0 survives preseason, calendar, garage, save/reload and rene
   });
 
   await expect(page.getByText('Declined Local Shop: decline')).toBeVisible();
-  await expect(page.getByText('Counter Graphics')).toBeVisible();
-  await expect(page.getByText('E2E Graphics')).toBeVisible();
+  await expect(page.getByText('Counter Graphics', { exact: true })).toBeVisible();
+  await expect(page.getByText('E2E Graphics', { exact: true })).toBeVisible();
 
-  const signCard = page.locator('.card').filter({ hasText: 'E2E Graphics' }).last();
+  const signCard = page.locator('.card').filter({ has: page.getByText('E2E Graphics', { exact: true }) }).last();
   await signCard.getByRole('button', { name: /Parent approves & sign/ }).click();
   await expect(signCard.getByText('Contract signed')).toBeVisible();
 
@@ -158,7 +160,7 @@ test('Sponsorship 2.0 survives preseason, calendar, garage, save/reload and rene
   expect(afterReload).toEqual(beforeReload);
 
   const decisions = await page.evaluate(async () => {
-    const mod = await import('/src/systems/sponsorship2.js');
+    const mod = await import(new URL('src/systems/sponsorship2.js', document.baseURI).href);
     const source = window.__legacy.game.state.sponsorship2;
     const contractId = source.contracts[0].id;
 
