@@ -1,6 +1,7 @@
 // Entry point. Boots the app into #app.
 import { App } from './ui.js';
 import { installCalendar2PlannerPatch } from './calendar2PlannerPatch.js';
+import { installSponsorship2UiPatch } from './sponsorship2UiPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -11,6 +12,11 @@ const CONSENT_KEY = 'legacy_mx_analytics_consent';
 // constructed so every rendered career-calendar screen uses the continuous,
 // date-first presentation.
 installCalendar2PlannerPatch(App);
+
+// Sponsorship 2.0 (#341-#345): the season program stays tentative until the
+// player gets a real sponsor-funding/negotiation step, then locks with the
+// family's remaining contribution and sponsor obligations visible.
+installSponsorship2UiPatch(App);
 
 // Local, privacy-safe crash/error logging (#246). Loaded before the app so an
 // error during boot is still captured. Persists to its own localStorage key,
