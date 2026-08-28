@@ -94,6 +94,92 @@ export const NORTHEAST_PROFILE = assertRegionalProfile({
   },
 });
 
+export const SOUTHEAST_PROFILE = assertRegionalProfile({
+  id: 'southeast',
+  name: 'Southeast',
+  geography: {
+    // Game-content footprint for Region #2; not an assertion of an official administrative boundary.
+    states: ['NC', 'SC', 'GA', 'FL', 'AL', 'TN'],
+    density: 'broad-multi-state-corridor',
+    notes: [
+      'larger north-south travel spread than the Northeast reference region',
+      'Florida-to-Tennessee travel creates meaningful long-haul amateur decisions',
+      'reference Road to Loretta events span GA, SC, NC, FL, AL and TN',
+    ],
+  },
+  climate: {
+    type: 'warm-humid-subtropical-dominant',
+    winter: 'mild-and-ridable-in-many-locations',
+    spring: 'high-event-density-with-rain-risk',
+    summer: 'heat-humidity-thunderstorm-pressure',
+    fall: 'warm-with-tropical-storm-risk',
+  },
+  ridingSeason: {
+    openMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    peakMonths: [1, 2, 3, 4, 10, 11, 12],
+    summerTradeoff: 'rideable-but-heat-and-heavy-rain-risk-rise',
+  },
+  surfaces: ['sand', 'loam', 'clay', 'red-clay', 'mixed-hardpack'],
+  eventCulture: {
+    cadence: 'frequent-long-season-weekends',
+    density: 'high-with-early-year-qualifier-pressure',
+    prestige: ['local-series', 'regional-amateur', 'road-to-lorettas', 'training-destination-events'],
+  },
+  travel: {
+    typicalPattern: 'day-trip-to-long-haul',
+    bands: { local: 140, overnight: 300, regional: 650, longHaul: 651 },
+    tollSensitivity: 'low-to-moderate',
+    distancePressure: 'high-for-cross-state-programs',
+  },
+  economy: {
+    entryFeeRange: [40, 100],
+    gateFeeRange: [15, 45],
+    lodgingPressure: 'moderate-to-high-for-travel-programs',
+    fuelPressure: 'high-when-chasing-region-wide-events',
+  },
+  practiceCulture: {
+    style: 'long-season-open-practice-training-and-race-prep',
+    seasonality: 'lower-than-northeast',
+  },
+  supportEcosystem: {
+    style: 'dealer-shop-local-team-and-training-network',
+    relationshipWeight: 'high',
+    factoryAccess: 'earned-through-results-and-visibility',
+  },
+  competitionCulture: {
+    fieldShape: 'large-mixed-local-and-traveling-amateur-fields',
+    identity: ['heat-adaptive', 'sand-and-clay-versatile', 'travel-program-oriented'],
+  },
+  weatherDisruptions: ['heavy-rain', 'thunderstorm', 'heat', 'humidity', 'tropical-storm', 'mud'],
+  lorettaRouting: {
+    regionName: 'Southeast',
+    areaToRegional: 'same-region-advancement',
+    regionalToNational: 'official-current-rules-data',
+    // Dated reference data only; gameplay rules should remain data-driven by season.
+    reference2026: {
+      areaQualifiers: 8,
+      areaAdvanceGuaranteed: 9,
+      regionalAdvanceGuaranteed: 6,
+      amateurRegional: 'Muddy Creek, TN',
+      youthRegional: 'Gatorback, FL',
+    },
+  },
+  research: {
+    status: 'research-gate-approved',
+    reviewedAt: '2026-08-26',
+    sources: [
+      'MX Sports event schedule / qualification guidance / supplemental rules (2026 reference)',
+      'NOAA Southeast climate references',
+    ],
+  },
+});
+
+export function profileById(id) {
+  if (id === 'northeast') return NORTHEAST_PROFILE;
+  if (id === 'southeast') return SOUTHEAST_PROFILE;
+  return null;
+}
+
 export function createRegionalRuntime(profile) {
   assertRegionalProfile(profile);
   return {
