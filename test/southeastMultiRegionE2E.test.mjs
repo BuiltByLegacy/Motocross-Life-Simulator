@@ -98,7 +98,6 @@ test('Southeast living world persists rivals, support relationships and season c
   assert.equal(world.rivals['se-rival-mason'].riderWins, 1);
   assert.equal(world.reputation.regional > 0, true);
 
-  // Build enough earned reputation to surface a relationship opportunity.
   world.reputation.local = 40;
   world.reputation.regional = 40;
   const opportunities = southeastSupportOpportunities(world, { resultsScore: 80 });
@@ -147,10 +146,10 @@ test('Southeast world and multi-region career survive save/load and season rollo
 
   let career = createMultiRegionCareer({ homeRegionId: 'northeast', seasonYear: 2027 });
   career = recordCrossRegionResult(career, { event, finish: 6, fieldSize: 25 });
-  const before = career.reputation.southeast.regional;
+  const before = career.reputation.southeast.local;
   career = rolloverMultiRegionCareer(career, 2028);
   assert.equal(career.seasonYear, 2028);
   assert.equal(career.seasonHistory.length, 1);
-  assert.equal(career.reputation.southeast.regional > 0, true);
-  assert.equal(career.reputation.southeast.regional <= before, true);
+  assert.equal(career.reputation.southeast.local > 0, true);
+  assert.equal(career.reputation.southeast.local <= before, true);
 });
