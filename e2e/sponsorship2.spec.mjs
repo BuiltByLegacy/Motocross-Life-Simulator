@@ -117,7 +117,8 @@ test('Sponsorship 2.0 survives preseason, calendar, garage, save/reload and rene
     const app = window.__legacy;
     app.tab = 'week'; app._seasonView = true; app.render();
   });
-  await expect(page.locator('[data-s2-calendar="agenda"]')).toBeVisible();
+  const seasonAgenda = page.locator('[data-s2-calendar="agenda"]').filter({ hasText: 'Sponsor commitment agenda' });
+  await expect(seasonAgenda).toBeVisible();
   await expect(page.locator('[data-s2-obligation-id]').first()).toContainText('E2E Graphics');
 
   const pending = page.locator('[data-s2-obligation-id]').filter({ has: page.locator('[data-s2-action="fulfill"]') });
@@ -180,7 +181,8 @@ test('Sponsorship 2.0 survives preseason, calendar, garage, save/reload and rene
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => { window.__legacy.tab = 'week'; window.__legacy._seasonView = true; window.__legacy.render(); });
-  const calendarBox = await page.locator('[data-s2-calendar="agenda"]').boundingBox();
+  const mobileSeasonAgenda = page.locator('[data-s2-calendar="agenda"]').filter({ hasText: 'Sponsor commitment agenda' });
+  const calendarBox = await mobileSeasonAgenda.boundingBox();
   expect(calendarBox).not.toBeNull();
   expect(calendarBox.x).toBeGreaterThanOrEqual(0);
   expect(calendarBox.x + calendarBox.width).toBeLessThanOrEqual(391);
