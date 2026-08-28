@@ -2,6 +2,7 @@
 import { App } from './ui.js';
 import { installCalendar2PlannerPatch } from './calendar2PlannerPatch.js';
 import { installSponsorship2UiPatch } from './sponsorship2UiPatch.js';
+import { installSponsorship2HardeningPatch } from './sponsorship2HardeningPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -17,6 +18,11 @@ installCalendar2PlannerPatch(App);
 // player gets a real sponsor-funding/negotiation step, then locks with the
 // family's remaining contribution and sponsor obligations visible.
 installSponsorship2UiPatch(App);
+
+// Sponsorship 2.0 hardening (#349): dated commitments render in Calendar 2.0,
+// graphics/product obligations become actionable in the Garage, and revising a
+// tentative program can no longer bypass the sponsor-lock gate.
+installSponsorship2HardeningPatch(App);
 
 // Local, privacy-safe crash/error logging (#246). Loaded before the app so an
 // error during boot is still captured. Persists to its own localStorage key,
