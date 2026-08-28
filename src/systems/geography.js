@@ -73,11 +73,13 @@ const DEFAULT_HOMES = {
 export function createHomeGeography({ regionId = 'northeast', state = null, lat = null, lon = null } = {}) {
   if (!regionById(regionId)) throw new Error(`Unknown home region: ${regionId}`);
   const fallback = DEFAULT_HOMES[regionId];
+  const hasLat = lat !== null && lat !== undefined && Number.isFinite(Number(lat));
+  const hasLon = lon !== null && lon !== undefined && Number.isFinite(Number(lon));
   return {
     version: 2, regionId,
     state: state ?? fallback.state,
-    lat: Number.isFinite(Number(lat)) ? Number(lat) : fallback.lat,
-    lon: Number.isFinite(Number(lon)) ? Number(lon) : fallback.lon,
+    lat: hasLat ? Number(lat) : fallback.lat,
+    lon: hasLon ? Number(lon) : fallback.lon,
     familiarity: {}, visits: {},
   };
 }
@@ -85,7 +87,7 @@ export function createHomeGeography({ regionId = 'northeast', state = null, lat 
 export function migrateHomeGeography(data = {}) {
   const regionId = regionById(data.regionId) ? data.regionId : 'northeast';
   const base = createHomeGeography({ ...data, regionId });
-  return { ...base, ...data, version: 2, regionId, familiarity: { ...(data.familiarity ?? {}) }, visits: { ...(data.visits ?? {}) } };
+  return { ...base, ...data, version: 2, regionId, lat: base.lat, lon: base.lon, familiarity: { ...(data.familiarity ?? {}) }, visits: { ...(data.visits ?? {}) } };
 }
 
 function rad(x) { return x * Math.PI / 180; }
