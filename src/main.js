@@ -7,6 +7,7 @@ import { installUi2ShellPatch } from './ui2ShellPatch.js';
 import { installUi2GaragePatch } from './ui2GaragePatch.js';
 import { installUi2CalendarPatch } from './ui2CalendarPatch.js';
 import { installUi2RaceWeekendPatch } from './ui2RaceWeekendPatch.js';
+import { installSeasonLifecycleUiPatch } from './seasonLifecycleUiPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -27,6 +28,9 @@ installUi2CalendarPatch(App);
 // UI 2.0 Race Weekend (#360): presentation-only override for arrival, live motos
 // and results; deterministic race engine behavior stays in the existing domain.
 installUi2RaceWeekendPatch(App);
+// Season Lifecycle 2.0 (#366-#372) intentionally installs last: it frames the
+// final season board/race/result views without replacing their underlying logic.
+installSeasonLifecycleUiPatch(App);
 
 const diag = loadDiag();
 diag.install(window, {
