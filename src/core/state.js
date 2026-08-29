@@ -31,10 +31,8 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
   for (const p of people) {
     relationships[p.id] = {
       id: p.id,
-      // In Parent mode the "child" person is named after the rider.
       name: p.id === 'child' ? riderName : p.name,
       role: p.role,
-      // Hidden values, expressed through behavior (Relationship Engine).
       values: { ...p.startValues },
       arcStage: p.arcStages ? 0 : null,
       sharedMemories: [],
@@ -44,7 +42,7 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
   return {
     seed,
     week: 1,
-    phase: 'planning', // planning | scenario | prerace | race | recap | season_over
+    phase: 'planning',
 
     rider: {
       name: riderName,
@@ -53,7 +51,6 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
       birthYear,
       age,
       klass,
-      // Skills, 0-100, scaled by age. Expectation inputs for the race sim.
       skills: {
         starts: sk(34),
         cornering: sk(38),
@@ -63,79 +60,76 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
         consistency: sk(40),
         fitness: sk(45),
       },
-      confidence: 50, // 0-100, volatile (the kid's morale, in Parent mode)
-      fatigue: 0, // 0-100, higher = worse
-      burnout: 0, // 0-100, Parent-mode: how worn-down on racing the kid is
-      injury: null, // { name, weeksOut, severity }
+      confidence: 50,
+      fatigue: 0,
+      burnout: 0,
+      injury: null,
     },
 
     family: {
       money: 1200,
-      stress: 20, // 0-100 household stress (Parent Marriage / world sim)
-      // Parent approval, hidden, gates certain choices.
-      support_level: 0, // Career Support Ladder (0 = Family Supported)
+      stress: 20,
+      support_level: 0,
     },
 
-    // The race bike is an Asset with identity and history (DD-0011).
     bike: BIKE_FOR_CLASS(klass, startYear - 1),
 
     garage: {
-      bikes: [], // additional owned bikes beyond the active race bike (issue #3)
+      bikes: [],
       trophies: [],
-      objects: [], // object-memory carrying items (helmets, plates...)
-      parts: [], // owned spare parts / gear not yet installed
+      objects: [],
+      parts: [],
     },
 
     relationships,
-
     memories: [],
     news: [],
 
     season: {
-      results: [], // { week, race, moto1, moto2, overall, points }
+      results: [],
       points: 0,
       bestFinish: null,
     },
 
     market: {
-      listings: [], // active marketplace listings
+      listings: [],
       seenIds: [],
     },
 
-    opportunities: [], // open opportunities (Opportunity Engine)
-    sponsors: [], // active sponsor ids (Sponsor Engine)
+    opportunities: [],
+    sponsors: [],
     flags: {},
-    schedule: [], // activities chosen for the current week
+    schedule: [],
     pendingScenario: null,
-    lastRace: null, // transient race result for the race screen
-    logbook: [], // human-readable week-by-week diary for the recap
+    lastRace: null,
+    logbook: [],
 
-    // ---- multi-week / multi-season / campaign scaffolding ----
-    campaign: 'rider', // 'rider' | 'parent' (DD-0012)
-    schoolMode: 'school', // 'school' | 'homeschool' (issue #5)
-    program: defaultProgram(EVENT_POOL()), // chosen events per race weekend (issue #22)
-    programSet: false, // has the player built this season's program yet?
-    seasonGoals: [], // chosen season goals (issue #54)
-    calendar: buildScheduleFromProgram(EVENT_POOL(), null), // built from the program
-    lorettaPath: null, // Road to Loretta's progression, hydrated by Game (issue #58)
-    progression: null, // per-class competition progression (issue #63)
-    standings: null, // season standings service state (issue #67)
-    momentum: null, // confidence & momentum tracker (issue #66)
-    rivals: null, // recurring-rival history (issue #65)
-    assets: null, // asset provenance registry (issue #69)
-    memTriggers: null, // automatic memory-trigger dedupe state (issue #70)
-    notifications: null, // phone notification queue (issue #74)
-    phoneState: null, // persisted phone app search/filter state (issue #89)
-    raceWeekend: null, // current race-weekend lifecycle state (issues #160-#164)
-    responsibility: null, // age/trust permission snapshot (issues #104-#110)
-    garageUpgrades: [], // owned Living Garage upgrades (issues #220/#213)
-    seasonCommit: null, // season commitment lifecycle state (issue #229, DD-0029)
-    tutorial: null, // first-time onboarding tutorial progress (issue #243)
-    seasonLifecycle: null, // Season Lifecycle 2.0 brief/family plan/dynamic sponsor market (#367-#369)
+    campaign: 'rider',
+    schoolMode: 'school',
+    program: defaultProgram(EVENT_POOL()),
+    programSet: false,
+    seasonGoals: [],
+    calendar: buildScheduleFromProgram(EVENT_POOL(), null),
+    lorettaPath: null,
+    progression: null,
+    standings: null,
+    momentum: null,
+    rivals: null,
+    assets: null,
+    memTriggers: null,
+    notifications: null,
+    phoneState: null,
+    raceWeekend: null,
+    responsibility: null,
+    garageUpgrades: [],
+    seasonCommit: null,
+    tutorial: null,
+    seasonLifecycle: null,
+    lifeBetweenRaces: null, // canonical off-week decisions/training/recovery (#387-#389)
     seasonNumber: 1,
-    startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
-    _preparedWeek: 0, // guards once-per-week setup across save/load
-    chainQueue: [], // scheduled follow-up scenarios: { dueWeek, scenarioId }
-    careerHistory: [], // one entry per completed season
+    startYear,
+    _preparedWeek: 0,
+    chainQueue: [],
+    careerHistory: [],
   };
 }
