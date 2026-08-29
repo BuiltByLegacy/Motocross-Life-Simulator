@@ -86,7 +86,10 @@ test('Season Lifecycle 2.0 frames the year, earns support midseason and closes w
   expect(reviewBox.x).toBeGreaterThanOrEqual(0);
   expect(reviewBox.x + reviewBox.width).toBeLessThanOrEqual(391);
 
-  const carry = await page.evaluate(() => window.__legacy.game.state.seasonLifecycle.carryover);
-  expect(carry).toBeTruthy();
-  expect(carry.money).toBe(window.__legacy ? carry.money : carry.money);
+  const carry = await page.evaluate(() => ({
+    carryover: window.__legacy.game.state.seasonLifecycle.carryover,
+    familyMoney: window.__legacy.game.family.money,
+  }));
+  expect(carry.carryover).toBeTruthy();
+  expect(carry.carryover.money).toBe(carry.familyMoney);
 });
