@@ -7,6 +7,7 @@ import { installUi2ShellPatch } from './ui2ShellPatch.js';
 import { installUi2GaragePatch } from './ui2GaragePatch.js';
 import { installUi2CalendarPatch } from './ui2CalendarPatch.js';
 import { installUi2RaceWeekendPatch } from './ui2RaceWeekendPatch.js';
+import { installUi2SeasonLifecyclePatch } from './ui2SeasonLifecyclePatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -27,6 +28,10 @@ installUi2CalendarPatch(App);
 // UI 2.0 Race Weekend (#360): presentation-only override for arrival, live motos
 // and results; deterministic race engine behavior stays in the existing domain.
 installUi2RaceWeekendPatch(App);
+// Season Lifecycle 2.0 (#372): presentation-only orchestration around the existing
+// season/calendar/race systems. Brief, family plan, sponsor opportunity, midseason
+// review and season review are scenes; domain math remains in lifecycle systems.
+installUi2SeasonLifecyclePatch(App);
 
 const diag = loadDiag();
 diag.install(window, {
