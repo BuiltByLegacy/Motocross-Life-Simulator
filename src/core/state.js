@@ -131,6 +131,7 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     garageUpgrades: [], // owned Living Garage upgrades (issues #220/#213)
     seasonCommit: null, // season commitment lifecycle state (issue #229, DD-0029)
     tutorial: null, // first-time onboarding tutorial progress (issue #243)
+    seasonLifecycle: null, // Season Lifecycle 2.0 brief/family plan/dynamic sponsor market (#367-#369)
     seasonNumber: 1,
     startYear, // calendar year of season 1; season year = startYear + seasonNumber - 1
     _preparedWeek: 0, // guards once-per-week setup across save/load
@@ -138,4 +139,3 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     careerHistory: [], // one entry per completed season
   };
 }
-
