@@ -4,9 +4,9 @@ const DESTINATION_BY_TAB = new Map([
   ['garage', 'home'],
   ['week', 'calendar'],
   ['stats', 'career'],
+  ['sponsors', 'career'],
   ['phone', 'world'],
-  ['sponsors', 'more'],
-  ['people', 'more'],
+  ['people', 'world'],
   ['journal', 'more'],
 ]);
 
@@ -21,6 +21,8 @@ function ensureStylesheet() {
 
 function navigate(app, legacyTab) {
   app._ui2MoreOpen = false;
+  if (legacyTab !== 'phone') app._ui2WorldPanel = 'hub';
+  app._phoneApp = null;
   app.tab = legacyTab;
   app.render();
   try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); }
@@ -83,7 +85,6 @@ export function installUi2ShellPatch(App) {
 }
 
 function moreDescription(id) {
-  if (id === 'sponsors') return 'Deals, obligations and support';
-  if (id === 'people') return 'Family, rivals, coaches and relationships';
-  return 'Memories, milestones and the life you are building';
+  if (id === 'journal') return 'Full journal, memories and prototype utilities';
+  return 'Lower-frequency career utilities';
 }

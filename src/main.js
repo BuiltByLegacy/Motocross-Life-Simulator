@@ -8,6 +8,7 @@ import { installUi2GaragePatch } from './ui2GaragePatch.js';
 import { installUi2CalendarPatch } from './ui2CalendarPatch.js';
 import { installUi2RaceWeekendPatch } from './ui2RaceWeekendPatch.js';
 import { installUi2SeasonLifecyclePatch } from './ui2SeasonLifecyclePatch.js';
+import { installUi2CompletionPatch } from './ui2CompletionPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -18,20 +19,23 @@ installCalendar2PlannerPatch(App);
 installSponsorship2UiPatch(App);
 installSponsorship2HardeningPatch(App);
 installUi2ShellPatch(App);
-// UI 2.0 visual identity (#358/#362): Garage is the first world-first reference
-// destination. Installed after the shell so it can replace legacy Garage content
-// without changing simulation/domain behavior.
 installUi2GaragePatch(App);
-// UI 2.0 Calendar (#359): installed after Calendar 2.0 and sponsorship patches so
-// the season board preserves their domain behavior while replacing the builder UI.
 installUi2CalendarPatch(App);
-// UI 2.0 Race Weekend (#360): presentation-only override for arrival, live motos
-// and results; deterministic race engine behavior stays in the existing domain.
 installUi2RaceWeekendPatch(App);
-// Season Lifecycle 2.0 (#372): presentation-only orchestration around the existing
-// season/calendar/race systems. Brief, family plan, sponsor opportunity, midseason
-// review and season review are scenes; domain math remains in lifecycle systems.
 installUi2SeasonLifecyclePatch(App);
+// UI 2.0 completion wave (#355/#375-#380): Career becomes a record book,
+// World becomes the motocross ecosystem, and new-career setup becomes a
+// focused life-entry flow. Presentation only; simulation/domain state remains intact.
+installUi2CompletionPatch(App);
+
+// Preserve the established accessible-name contract used by save/reload flows
+// even though the visible UI 2.0 continuation card contains richer copy.
+const ui2RenderTitle = App.prototype.renderTitle;
+App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
+  const result = ui2RenderTitle.apply(this, args);
+  this.root?.querySelector('[data-testid="ui2-continue-career"]')?.setAttribute('aria-label', 'Continue Career');
+  return result;
+};
 
 const diag = loadDiag();
 diag.install(window, {

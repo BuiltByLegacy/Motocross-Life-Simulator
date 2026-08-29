@@ -7,6 +7,8 @@ test('UI 2.0 shell provides focused mobile navigation and responsive width', asy
   await page.evaluate(() => {
     localStorage.clear();
     window.__legacy.startGame({ name: 'UI2 Rider', depth: 'detailed', birthdate: '2014-05-15', campaign: 'rider', avatar: '🧒', background: null });
+    window.__legacy.tab = 'garage';
+    window.__legacy.render();
   });
 
   const nav = page.getByTestId('ui2-primary-nav');
@@ -31,8 +33,8 @@ test('UI 2.0 shell provides focused mobile navigation and responsive width', asy
 
   await page.getByTestId('ui2-nav-more').click();
   await expect(page.getByTestId('ui2-more-sheet')).toBeVisible();
-  await page.getByTestId('ui2-more-people').click();
-  expect(await page.evaluate(() => window.__legacy.tab)).toBe('people');
+  await page.getByTestId('ui2-more-journal').click();
+  expect(await page.evaluate(() => window.__legacy.tab)).toBe('journal');
 
   await page.setViewportSize({ width: 1280, height: 900 });
   const width = await page.locator('#app').evaluate((node) => node.getBoundingClientRect().width);
