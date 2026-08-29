@@ -6,6 +6,7 @@ import { installSponsorship2HardeningPatch } from './sponsorship2HardeningPatch.
 import { installUi2ShellPatch } from './ui2ShellPatch.js';
 import { installUi2GaragePatch } from './ui2GaragePatch.js';
 import { installUi2CalendarPatch } from './ui2CalendarPatch.js';
+import { installUi2RaceWeekendPatch } from './ui2RaceWeekendPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -23,6 +24,9 @@ installUi2GaragePatch(App);
 // UI 2.0 Calendar (#359): installed after Calendar 2.0 and sponsorship patches so
 // the season board preserves their domain behavior while replacing the builder UI.
 installUi2CalendarPatch(App);
+// UI 2.0 Race Weekend (#360): presentation-only override for arrival, live motos
+// and results; deterministic race engine behavior stays in the existing domain.
+installUi2RaceWeekendPatch(App);
 
 const diag = loadDiag();
 diag.install(window, {
