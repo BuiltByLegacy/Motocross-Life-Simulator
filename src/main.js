@@ -5,6 +5,7 @@ import { installSponsorship2UiPatch } from './sponsorship2UiPatch.js';
 import { installSponsorship2HardeningPatch } from './sponsorship2HardeningPatch.js';
 import { installUi2ShellPatch } from './ui2ShellPatch.js';
 import { installUi2GaragePatch } from './ui2GaragePatch.js';
+import { installUi2CalendarPatch } from './ui2CalendarPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -19,6 +20,9 @@ installUi2ShellPatch(App);
 // destination. Installed after the shell so it can replace legacy Garage content
 // without changing simulation/domain behavior.
 installUi2GaragePatch(App);
+// UI 2.0 Calendar (#359): installed after Calendar 2.0 and sponsorship patches so
+// the season board preserves their domain behavior while replacing the builder UI.
+installUi2CalendarPatch(App);
 
 const diag = loadDiag();
 diag.install(window, {
