@@ -1,0 +1,200 @@
+/* UI 2.0 foundation (#356/#357)
+   World first, data second. Garage-at-night identity with stronger hierarchy,
+   touch-first navigation, safe areas, responsive layouts, and progressive disclosure. */
+
+:root {
+  --ui2-bg: #101216;
+  --ui2-surface-1: #171a20;
+  --ui2-surface-2: #1e222a;
+  --ui2-surface-3: #272c35;
+  --ui2-border: rgba(255,255,255,.10);
+  --ui2-border-strong: rgba(255,255,255,.18);
+  --ui2-text: #f3f5f7;
+  --ui2-text-muted: #a7b0bc;
+  --ui2-text-faint: #737d89;
+  --ui2-accent: #ff8a1e;
+  --ui2-accent-soft: rgba(255,138,30,.15);
+  --ui2-success: #63c879;
+  --ui2-warning: #ffcc5c;
+  --ui2-danger: #ef6652;
+  --ui2-info: #58a9e6;
+  --ui2-radius-sm: 10px;
+  --ui2-radius-md: 14px;
+  --ui2-radius-lg: 20px;
+  --ui2-space-1: 4px;
+  --ui2-space-2: 8px;
+  --ui2-space-3: 12px;
+  --ui2-space-4: 16px;
+  --ui2-space-5: 20px;
+  --ui2-space-6: 24px;
+  --ui2-shadow-1: 0 10px 30px rgba(0,0,0,.24);
+  --ui2-shadow-2: 0 18px 48px rgba(0,0,0,.38);
+  --ui2-nav-h: 68px;
+}
+
+body.ui2-ready {
+  background:
+    radial-gradient(900px 520px at 70% -10%, rgba(255,138,30,.08), transparent 60%),
+    linear-gradient(180deg, #12151a, var(--ui2-bg));
+  color: var(--ui2-text);
+}
+
+body.ui2-ready #app { width: 100%; max-width: none; min-height: 100dvh; }
+body.ui2-ready .screen.ui2-shell {
+  width: min(100%, 1180px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(10px, env(safe-area-inset-top)) 14px calc(var(--ui2-nav-h) + 24px + env(safe-area-inset-bottom));
+}
+
+body.ui2-ready .ui2-sticky-head {
+  top: 0;
+  margin: 0 -14px 6px;
+  padding: 8px 14px 10px;
+  background: linear-gradient(180deg, rgba(16,18,22,.98) 72%, rgba(16,18,22,.88) 90%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+/* Compact HUD: glanceable, horizontally scrollable on small phones. */
+body.ui2-ready .stats {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+}
+body.ui2-ready .stats::-webkit-scrollbar { display: none; }
+body.ui2-ready .stat {
+  flex: 0 0 auto;
+  min-width: 88px;
+  border-radius: var(--ui2-radius-sm);
+  background: rgba(30,34,42,.88);
+  border-color: var(--ui2-border);
+  box-shadow: none;
+}
+body.ui2-ready .stat .k { font-size: .58rem; }
+body.ui2-ready .stat .v { font-size: .93rem; }
+
+/* Existing content becomes calmer during staged migration. */
+body.ui2-ready .card {
+  border-color: var(--ui2-border);
+  border-radius: var(--ui2-radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+body.ui2-ready .btn,
+body.ui2-ready .choice,
+body.ui2-ready .activity,
+body.ui2-ready .mk-card { min-height: 44px; }
+body.ui2-ready :focus-visible { outline: 3px solid rgba(255,138,30,.7); outline-offset: 2px; }
+
+/* Primary nav: five concepts, no cramped seven-tab strip. */
+.ui2-nav-wrap { position: relative; }
+.ui2-nav {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(100%, 720px);
+  min-height: var(--ui2-nav-h);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+  background: rgba(20,23,29,.96);
+  border: 1px solid var(--ui2-border);
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 -12px 38px rgba(0,0,0,.28);
+}
+.ui2-nav-item {
+  border: 0;
+  background: transparent;
+  color: var(--ui2-text-faint);
+  border-radius: 12px;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.ui2-nav-item.active { color: #ffc27f; background: var(--ui2-accent-soft); }
+.ui2-nav-icon { font-size: 1.05rem; line-height: 1; font-weight: 800; }
+.ui2-nav-label { font-size: .67rem; font-weight: 700; white-space: nowrap; }
+
+/* Sheet / drawer primitive */
+.ui2-sheet-backdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px 12px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(0,0,0,.56);
+  backdrop-filter: blur(4px);
+}
+.ui2-sheet {
+  width: min(100%, 560px);
+  max-height: min(78dvh, 720px);
+  overflow: auto;
+  border-radius: 22px;
+  background: var(--ui2-surface-2);
+  border: 1px solid var(--ui2-border-strong);
+  box-shadow: var(--ui2-shadow-2);
+}
+.ui2-sheet-handle { width: 42px; height: 4px; border-radius: 999px; background: #5d6672; margin: 9px auto 2px; }
+.ui2-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 8px; }
+.ui2-sheet-head h2 { margin: 0; font-size: 1.12rem; }
+.ui2-sheet-body { padding: 6px 10px 14px; }
+.ui2-icon-button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--ui2-surface-3); color: var(--ui2-text); font-size: 1.35rem; }
+.ui2-more-row {
+  width: 100%; min-height: 62px; display: grid; grid-template-columns: 40px 1fr 20px; gap: 10px;
+  align-items: center; text-align: left; color: var(--ui2-text); background: transparent; border: 0;
+  border-radius: 14px; padding: 8px 10px; cursor: pointer;
+}
+.ui2-more-row:hover, .ui2-more-row.active { background: rgba(255,255,255,.06); }
+.ui2-more-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--ui2-surface-3); color: #ffc27f; font-weight: 800; }
+.ui2-more-copy { display: flex; flex-direction: column; gap: 2px; }
+.ui2-more-copy small { color: var(--ui2-text-muted); }
+.ui2-more-chevron { color: var(--ui2-text-faint); font-size: 1.35rem; }
+
+/* Reusable UI 2.0 presentation primitives. */
+.ui2-chip { display: inline-flex; align-items: baseline; gap: 7px; min-height: 34px; padding: 7px 10px; border-radius: 999px; background: var(--ui2-surface-2); border: 1px solid var(--ui2-border); }
+.ui2-chip-label { font-size: .7rem; color: var(--ui2-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.ui2-chip-value { font-size: .82rem; }
+.ui2-chip-success { border-color: rgba(99,200,121,.35); }
+.ui2-chip-warning { border-color: rgba(255,204,92,.35); }
+.ui2-chip-danger { border-color: rgba(239,102,82,.35); }
+.ui2-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 6px 0 18px; }
+.ui2-page-header h1 { font-size: clamp(1.45rem, 4vw, 2rem); }
+.ui2-eyebrow { color: #ffb76b; font-size: .72rem; text-transform: uppercase; letter-spacing: .09em; font-weight: 800; }
+.ui2-subtitle { color: var(--ui2-text-muted); max-width: 62ch; }
+.ui2-list-row { width: 100%; min-height: 58px; display: flex; align-items: center; gap: 12px; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--ui2-border); background: transparent; color: var(--ui2-text); text-align: left; }
+.ui2-list-row.interactive { cursor: pointer; }
+.ui2-list-copy { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ui2-list-copy span { color: var(--ui2-text-muted); font-size: .82rem; }
+.ui2-action-bar { position: sticky; bottom: calc(var(--ui2-nav-h) + 8px); display: flex; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(23,26,32,.94); border: 1px solid var(--ui2-border); backdrop-filter: blur(12px); }
+
+/* Tablet/desktop: stop pretending the browser is a 480px phone. */
+@media (min-width: 720px) {
+  body.ui2-ready .screen.ui2-shell { padding-left: 24px; padding-right: 24px; }
+  body.ui2-ready .ui2-sticky-head { margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; }
+  body.ui2-ready .ui2-scroll-area { width: min(100%, 900px); margin-inline: auto; }
+  .ui2-nav { bottom: 14px; border-radius: 18px; border-bottom: 1px solid var(--ui2-border); }
+  body.ui2-ready .screen.ui2-shell { padding-bottom: 108px; }
+}
+
+@media (min-width: 1024px) {
+  body.ui2-ready .ui2-scroll-area { width: min(100%, 1040px); }
+  body.ui2-ready .stats { justify-content: center; overflow: visible; flex-wrap: wrap; }
+  body.ui2-ready .stat { min-width: 104px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
