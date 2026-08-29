@@ -3,6 +3,7 @@ import { App } from './ui.js';
 import { installCalendar2PlannerPatch } from './calendar2PlannerPatch.js';
 import { installSponsorship2UiPatch } from './sponsorship2UiPatch.js';
 import { installSponsorship2HardeningPatch } from './sponsorship2HardeningPatch.js';
+import { installUi2ShellPatch } from './ui2ShellPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -23,6 +24,11 @@ installSponsorship2UiPatch(App);
 // graphics/product obligations become actionable in the Garage, and revising a
 // tentative program can no longer bypass the sponsor-lock gate.
 installSponsorship2HardeningPatch(App);
+
+// UI 2.0 foundation (#356/#357): install last so the new responsive shell and
+// five-concept navigation wrap the existing presentation adapters without
+// changing simulation/domain behavior.
+installUi2ShellPatch(App);
 
 // Local, privacy-safe crash/error logging (#246). Loaded before the app so an
 // error during boot is still captured. Persists to its own localStorage key,
