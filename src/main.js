@@ -9,6 +9,7 @@ import { installUi2CalendarPatch } from './ui2CalendarPatch.js';
 import { installUi2RaceWeekendPatch } from './ui2RaceWeekendPatch.js';
 import { installUi2SeasonLifecyclePatch } from './ui2SeasonLifecyclePatch.js';
 import { installUi2CompletionPatch } from './ui2CompletionPatch.js';
+import { installUi2LifeBetweenRacesPatch } from './ui2LifeBetweenRacesPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -27,6 +28,9 @@ installUi2SeasonLifecyclePatch(App);
 // World becomes the motocross ecosystem, and new-career setup becomes a
 // focused life-entry flow. Presentation only; simulation/domain state remains intact.
 installUi2CompletionPatch(App);
+// Life Between Races 2.0 (#394) layers one focused off-week scene over Garage/Calendar
+// without replacing the canonical calendar, sponsor, garage, or race systems.
+installUi2LifeBetweenRacesPatch(App);
 
 // Preserve the established accessible-name contract used by save/reload flows
 // even though the visible UI 2.0 continuation card contains richer copy.
