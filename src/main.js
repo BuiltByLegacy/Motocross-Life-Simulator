@@ -28,6 +28,15 @@ installUi2SeasonLifecyclePatch(App);
 // focused life-entry flow. Presentation only; simulation/domain state remains intact.
 installUi2CompletionPatch(App);
 
+// Preserve the established accessible-name contract used by save/reload flows
+// even though the visible UI 2.0 continuation card contains richer copy.
+const ui2RenderTitle = App.prototype.renderTitle;
+App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
+  const result = ui2RenderTitle.apply(this, args);
+  this.root?.querySelector('[data-testid="ui2-continue-career"]')?.setAttribute('aria-label', 'Continue Career');
+  return result;
+};
+
 const diag = loadDiag();
 diag.install(window, {
   persist: (entries) => { try { localStorage.setItem(DIAG_KEY, JSON.stringify(entries)); } catch (e) { /* storage may be unavailable */ } },
