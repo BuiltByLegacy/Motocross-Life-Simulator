@@ -139,7 +139,7 @@ test('breakout milestone can deterministically generate new in-season sponsor in
   assert.equal(second.generated.length, 0);
 });
 
-test('weak season does not manufacture arbitrary sponsor offers', () => {
+test('weak season can still draw modest local support but does not manufacture high-tier breakout offers', () => {
   const initial = createSeasonLifecycleState({ seasonYear: 2028 });
   const result = evaluateInSeasonSponsorMarket(initial, {
     careerSeed: 'struggle-7',
@@ -151,7 +151,8 @@ test('weak season does not manufacture arbitrary sponsor offers', () => {
     compliance: 65,
     conductConcern: 20,
   });
-  assert.equal(result.generated.length, 0);
+  assert.ok(result.generated.every((lead) => lead.tier === 1));
+  assert.ok(result.generated.every((lead) => lead.type !== 'strong-interest'));
 });
 
 test('in-season sponsor accept/reject/counter decision persists without mutating preseason contracts', () => {
