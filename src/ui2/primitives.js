@@ -9,9 +9,9 @@ export const UI2_PRIMARY_NAV = Object.freeze([
   { id: 'world', label: 'World', icon: '◎', legacyTab: 'phone' },
 ]);
 
+// Career now owns sponsorship context and World owns people. More is reserved
+// for genuinely lower-frequency utilities instead of duplicating primary areas.
 export const UI2_MORE_NAV = Object.freeze([
-  { id: 'sponsors', label: 'Sponsors', icon: 'S', legacyTab: 'sponsors' },
-  { id: 'people', label: 'People', icon: 'P', legacyTab: 'people' },
   { id: 'journal', label: 'Journal', icon: 'J', legacyTab: 'journal' },
 ]);
 
@@ -78,24 +78,11 @@ export function ui2ActionBar(primary, secondary = []) {
     primary);
 }
 
-export function ui2Sheet({ title, children = [], onClose, testId = 'ui2-sheet' }) {
-  const backdrop = ui2El('div', {
-    class: 'ui2-sheet-backdrop',
-    'data-testid': `${testId}-backdrop`,
-    onclick: (event) => { if (event.target === backdrop) onClose?.(); },
-  });
-  const panel = ui2El('section', {
-    class: 'ui2-sheet',
-    role: 'dialog',
-    'aria-modal': 'true',
-    'aria-label': title,
-    'data-testid': testId,
-  },
-  ui2El('div', { class: 'ui2-sheet-handle', 'aria-hidden': 'true' }),
-  ui2El('div', { class: 'ui2-sheet-head' },
-    ui2El('h2', {}, title),
-    ui2El('button', { class: 'ui2-icon-button', type: 'button', 'aria-label': 'Close', onclick: onClose }, '×')),
-  ui2El('div', { class: 'ui2-sheet-body' }, ...children));
-  backdrop.appendChild(panel);
-  return backdrop;
+export function ui2Sheet({ title, children = [], onClose, testId = null }) {
+  return ui2El('div', { class: 'ui2-sheet-backdrop', 'data-testid': testId, onclick: (event) => { if (event.target === event.currentTarget) onClose?.(); } },
+    ui2El('section', { class: 'ui2-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+      ui2El('header', { class: 'ui2-sheet-header' },
+        ui2El('h2', {}, title),
+        ui2El('button', { class: 'ui2-icon-button', type: 'button', 'aria-label': 'Close', onclick: onClose }, '×')),
+      ui2El('div', { class: 'ui2-sheet-body' }, ...children)));
 }
