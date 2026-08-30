@@ -31,7 +31,7 @@ export function equipmentValuation(assetRaw={},context={}){
   const rebuild=rebuildFactor(m);
   const mods=modificationFactor(asset.modifications??asset.installedParts??[]);
   const provenance=provenancePremium(context.provenance??asset.provenance??{});
-  const restricted=Boolean(context.ownershipRestricted??asset.ownershipRestricted||context.sponsorRestricted||context.teamOwned);
+  const restricted=Boolean((context.ownershipRestricted??asset.ownershipRestricted??false)||context.sponsorRestricted||context.teamOwned);
   const base=(msrp*age*condition*hours*rebuild*demand*regional)+mods.recoverableValue;
   const market=money(base*provenance.marketMultiplier);
   const collector=money(base*provenance.collectorMultiplier);
