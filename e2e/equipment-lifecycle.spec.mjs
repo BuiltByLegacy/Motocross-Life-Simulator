@@ -13,7 +13,7 @@ test('Equipment 2.0 survives ownership, wear, sale, replacement and reload',asyn
   s=eq.buyUsedBike(s,{assetId:'next250',kind:'bike',category:'bike',seller:'dealer-used',year:2025,make:'Honda',model:'CRF250R',price:6500,condition:90,hiddenWear:5,sellerReputation:92,compatible:true},{inspectionLevel:'mechanic',packages:[{id:'dealer',bikeDiscountPct:10}]});
   s=eq.nextEquipmentSeason(s);window.__legacy.game.state.equipmentLifecycle=s;window.__legacy.tab='garage';window.__legacy.render();window.__legacy.save?.();
  });
- await expect(page.getByTestId('ui2-equipment-scene')).toBeVisible();await expect(page.getByText(/CRF250R/)).toBeVisible();await noOverflow(page);
+ const equipmentScene=page.getByTestId('ui2-equipment-scene');await expect(equipmentScene).toBeVisible();await expect(equipmentScene.getByRole('heading',{name:/CRF250R/})).toBeVisible();await noOverflow(page);
  const before=await page.evaluate(()=>({cash:window.__legacy.game.state.equipmentLifecycle.cash,season:window.__legacy.game.state.equipmentLifecycle.season,bikes:window.__legacy.game.state.equipmentLifecycle.ownership.bikes.map(b=>b.assetId),sold:window.__legacy.game.state.equipmentLifecycle.market.circulation.map(x=>x.assetId)}));
  expect(before.season).toBe(2);expect(before.bikes).toEqual(['next250']);expect(before.sold).toContain('used125');
  await page.reload();await page.waitForFunction(()=>!!window.__legacy);await page.evaluate(()=>{window.__legacy.tab='garage';window.__legacy.render();});
