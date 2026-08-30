@@ -13,8 +13,6 @@ export function uid(prefix = 'id') {
 
 export const CURRENT_YEAR = new Date().getFullYear();
 
-// Scale a young rider's starting ability down — a 4-year-old on a PW50 is not a
-// 9-year-old. Skills then grow through play and across seasons (growing up).
 export function ageSkillFactor(age) {
   return Math.max(0.45, Math.min(1.15, 0.55 + (age - 4) * 0.07));
 }
@@ -43,59 +41,19 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     seed,
     week: 1,
     phase: 'planning',
-
     rider: {
-      name: riderName,
-      avatar: '🧒',
-      birthdate,
-      birthYear,
-      age,
-      klass,
-      skills: {
-        starts: sk(34),
-        cornering: sk(38),
-        jumping: sk(30),
-        whoops: sk(28),
-        raceIQ: sk(32),
-        consistency: sk(40),
-        fitness: sk(45),
-      },
-      confidence: 50,
-      fatigue: 0,
-      burnout: 0,
-      injury: null,
+      name: riderName, avatar: '🧒', birthdate, birthYear, age, klass,
+      skills: { starts: sk(34), cornering: sk(38), jumping: sk(30), whoops: sk(28), raceIQ: sk(32), consistency: sk(40), fitness: sk(45) },
+      confidence: 50, fatigue: 0, burnout: 0, injury: null,
     },
-
-    family: {
-      money: 1200,
-      stress: 20,
-      support_level: 0,
-    },
-
+    family: { money: 1200, stress: 20, support_level: 0 },
     bike: BIKE_FOR_CLASS(klass, startYear - 1),
-
-    garage: {
-      bikes: [],
-      trophies: [],
-      objects: [],
-      parts: [],
-    },
-
+    garage: { bikes: [], trophies: [], objects: [], parts: [] },
     relationships,
     memories: [],
     news: [],
-
-    season: {
-      results: [],
-      points: 0,
-      bestFinish: null,
-    },
-
-    market: {
-      listings: [],
-      seenIds: [],
-    },
-
+    season: { results: [], points: 0, bestFinish: null },
+    market: { listings: [], seenIds: [] },
     opportunities: [],
     sponsors: [],
     flags: {},
@@ -103,7 +61,6 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     pendingScenario: null,
     lastRace: null,
     logbook: [],
-
     campaign: 'rider',
     schoolMode: 'school',
     program: defaultProgram(EVENT_POOL()),
@@ -125,7 +82,8 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     seasonCommit: null,
     tutorial: null,
     seasonLifecycle: null,
-    lifeBetweenRaces: null, // canonical off-week decisions/training/recovery (#387-#389)
+    lifeBetweenRaces: null,
+    equipmentLifecycle: null, // canonical bikes/gear/market/economy lifecycle (#448/#458)
     seasonNumber: 1,
     startYear,
     _preparedWeek: 0,
