@@ -8,7 +8,8 @@ const ROLE_LABELS={race:'Race Bike',practice:'Practice Bike',spare:'Spare Bike',
 export function bikePresentation(bike,context={}){
  const value=equipmentValuation(bike,context),service=serviceThresholds(bike),m=bike.mechanical??bike;
  const attention=service.risk==='critical'?'service-now':service.risk==='high'?'service-soon':bike.role==='for-sale'?'listed':null;
- return {assetId:bike.assetId,role:bike.role,roleLabel:ROLE_LABELS[bike.role]??bike.role,name:bike.name??[bike.year,bike.make??bike.brand,bike.model].filter(Boolean).join(' ')||'Motocross Bike',condition:Math.round(Number(m.condition??bike.condition??100)),reliability:Math.round(Number(m.reliability??100)),engineHours:Math.round(Number(m.engineHours??0)*10)/10,rebuildCount:(m.rebuilds??[]).length,value:value.marketEstimate,tradeIn:value.tradeIn,ownershipSource:bike.ownershipSource??bike.ownershipStatus??'owned',memories:Number(bike.provenance?.memories?.length??bike.memoryCount??0),attention};
+ const name=bike.name??([bike.year,bike.make??bike.brand,bike.model].filter(Boolean).join(' ')||'Motocross Bike');
+ return {assetId:bike.assetId,role:bike.role,roleLabel:ROLE_LABELS[bike.role]??bike.role,name,condition:Math.round(Number(m.condition??bike.condition??100)),reliability:Math.round(Number(m.reliability??100)),engineHours:Math.round(Number(m.engineHours??0)*10)/10,rebuildCount:(m.rebuilds??[]).length,value:value.marketEstimate,tradeIn:value.tradeIn,ownershipSource:bike.ownershipSource??bike.ownershipStatus??'owned',memories:Number(bike.provenance?.memories?.length??bike.memoryCount??0),attention};
 }
 export function equipmentGarageScene(stateRaw,context={}){
  const s=createEquipmentCareerState(stateRaw),bikes=s.ownership.bikes.map(b=>bikePresentation(b,context));const gear=equipmentReadiness(s.gear);
