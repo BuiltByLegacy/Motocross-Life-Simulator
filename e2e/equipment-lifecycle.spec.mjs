@@ -11,12 +11,12 @@ test('Equipment 2.0 survives ownership, wear, sale, replacement and reload',asyn
   s=eq.useBike(s,'used125',{hours:6,kind:'practice'});s=eq.consumeGear(s,'filter',{sessions:1,kind:'race'});s=eq.replaceGear(s,'filter',{retailPrice:18});s=eq.serviceBike(s,'used125',{kind:'top-end',cost:550});
   const listed=eq.listBikeForSale(s,'used125',{askingPrice:4000});s=eq.completeBikeSale(listed.state,listed.listing.listingId,{buyer:'local-racer',price:3900});
   s=eq.buyUsedBike(s,{assetId:'next250',kind:'bike',category:'bike',seller:'dealer-used',year:2025,make:'Honda',model:'CRF250R',price:6500,condition:90,hiddenWear:5,sellerReputation:92,compatible:true},{inspectionLevel:'mechanic',packages:[{id:'dealer',bikeDiscountPct:10}]});
-  s=eq.nextEquipmentSeason(s);window.__legacy.game.state.equipmentLifecycle=s;window.__legacy.tab='garage';window.__legacy.render();window.__legacy.save?.();
+  s=eq.nextEquipmentSeason(s);window.__legacy.game.state.equipmentLifecycle=s;window.__legacy.tab='garage';window.__legacy.render();window.__legacy.saveGame();
  });
  const equipmentScene=page.getByTestId('ui2-equipment-scene');await expect(equipmentScene).toBeVisible();await expect(equipmentScene.getByRole('heading',{name:/CRF250R/})).toBeVisible();await noOverflow(page);
  const before=await page.evaluate(()=>({cash:window.__legacy.game.state.equipmentLifecycle.cash,season:window.__legacy.game.state.equipmentLifecycle.season,bikes:window.__legacy.game.state.equipmentLifecycle.ownership.bikes.map(b=>b.assetId),sold:window.__legacy.game.state.equipmentLifecycle.market.circulation.map(x=>x.assetId)}));
  expect(before.season).toBe(2);expect(before.bikes).toEqual(['next250']);expect(before.sold).toContain('used125');
- await page.reload();await page.waitForFunction(()=>!!window.__legacy);await page.evaluate(()=>{window.__legacy.tab='garage';window.__legacy.render();});
+ await page.reload();await page.waitForFunction(()=>!!window.__legacy);await page.evaluate(()=>window.__legacy.continueGame());await page.waitForFunction(()=>!!window.__legacy.game);await page.evaluate(()=>{window.__legacy.tab='garage';window.__legacy.render();});
  const after=await page.evaluate(()=>({cash:window.__legacy.game.state.equipmentLifecycle?.cash,season:window.__legacy.game.state.equipmentLifecycle?.season,bikes:window.__legacy.game.state.equipmentLifecycle?.ownership?.bikes?.map(b=>b.assetId),sold:window.__legacy.game.state.equipmentLifecycle?.market?.circulation?.map(x=>x.assetId)}));
  expect(after).toEqual(before);await expect(page.getByTestId('ui2-equipment-scene')).toBeVisible();await noOverflow(page);await page.setViewportSize({width:1280,height:900});await noOverflow(page);
 });
