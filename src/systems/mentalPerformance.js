@@ -35,7 +35,9 @@ export function applyMentalEvent(raw,event,{scale=1,source=null,note=''}={}){
 
 export function executionModifier(raw){
   const s=createMentalState(raw),belief=(s.confidence-50)*.08,streak=s.momentum*.055,pressurePenalty=Math.max(0,s.pressure-s.composure)*.12,bonus=Math.max(-12,Math.min(10,belief+streak-pressurePenalty));
-  return{execution:Math.round(bonus*10)/10,baseTalentModifier:0,state:s,band:bonus>=6?'hot':bonus<=-6?'slump':bonus<=-2?'tight':'steady'};
+  const sustainedSlump=s.streak<=-3||s.momentum<=-35;
+  const sustainedHot=s.streak>=3&&s.momentum>=30;
+  return{execution:Math.round(bonus*10)/10,baseTalentModifier:0,state:s,band:sustainedHot||bonus>=6?'hot':sustainedSlump||bonus<=-6?'slump':bonus<=-2?'tight':'steady'};
 }
 
 export function mentalExplanation(raw){const x=executionModifier(raw);if(x.band==='hot')return'You are riding with belief right now. Keep the routine simple.';if(x.band==='slump')return'Confidence is low and pressure is affecting execution more than your underlying ability.';if(x.band==='tight')return'You have the speed, but pressure is making clean execution harder.';return'Mental state is steady. Preparation is translating normally.';}
