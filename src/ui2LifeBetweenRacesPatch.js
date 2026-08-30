@@ -1,42 +1,12 @@
-import { openLifeBetweenRaces } from './systems/lifeBetweenRacesGame.js';
+import { openLifeBetweenRaces, availableTrainingSessions, takeLifeBetweenRacesDecision } from './systems/lifeBetweenRacesGame.js';
 import { expandedLifeBetweenRacesChoices, takeExpandedLifeBetweenRacesDecision } from './systems/lifeBetweenRacesExpandedGame.js';
 
-function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!=null)n.textContent=String(text); return n; }
-function add(p,...c){c.filter(Boolean).forEach(x=>p.appendChild(x));return p;}
-function ensureStyles(){ if(document.querySelector('link[data-ui2-lbr]'))return; const l=document.createElement('link'); l.rel='stylesheet'; l.href='./ui2LifeBetweenRaces.css'; l.dataset.ui2Lbr='1'; document.head.appendChild(l); }
-function familyLabel(f){ return ({training:'Training',recovery:'Recovery',maintenance:'Garage Prep',responsibility:'Life Responsibilities',prep:'Race Prep',relationship:'People & Life'})[f]??f; }
-
-function buildScene(app){
-  const game=app.game; if(!game)return null;
-  const opened=openLifeBetweenRaces(game); if(!opened?.period)return null;
-  const choices=expandedLifeBetweenRacesChoices(game)??[];
-  const recommended=choices.find(c=>c.recommended)??choices[0];
-  const root=el('section','lbr2-scene'); root.dataset.testid='life-between-races-scene';
-  add(root, el('span','lbr2-kicker','BETWEEN RACES'), el('h2','',recommended?familyLabel(recommended.family):'This Week Matters'));
-  const used=Number(opened.period.timeUsed??0), total=Number(opened.period.timeBudget??0);
-  add(root, el('p','lbr2-context',`${Math.max(0,total-used)} of ${total} time slots left. Training, recovery, bike work, family, money, travel prep and people all compete for the same week.`));
-  const list=el('div','lbr2-actions');
-  const firstByFamily=[]; const seen=new Set();
-  for(const choice of choices){ if(seen.has(choice.family))continue; seen.add(choice.family); firstByFamily.push(choice); }
-  firstByFamily.slice(0,6).forEach((choice)=>{
-    const b=el('button',`lbr2-action${choice.recommended?' recommended':''}`); b.type='button'; b.dataset.testid=`lbr-choice-${choice.family}`;
-    add(b,el('small','',choice.recommended?'RECOMMENDED':'OPTION'),el('strong','',familyLabel(choice.family)),el('span','',choice.description??choice.label??'Open this part of the week'));
-    b.onclick=()=>{ takeExpandedLifeBetweenRacesDecision(game,choice); app.render(); };
-    list.appendChild(b);
-  });
-  add(root,list);
-  return root;
-}
-
-export function installUi2LifeBetweenRacesPatch(App){
-  if(!App||App.prototype.__ui2LbrInstalled)return; App.prototype.__ui2LbrInstalled=true; ensureStyles();
-  const prior=App.prototype.render;
-  App.prototype.render=function renderLbr2(){
-    prior.call(this);
-    if(!this.game || !['garage','week'].includes(this.tab))return;
-    const scene=buildScene(this); if(!scene)return;
-    const host=this.root?.querySelector('.scroll-area'); if(!host)return;
-    host.querySelector('[data-testid="life-between-races-scene"]')?.remove();
-    if(this.tab==='garage') host.prepend(scene); else host.append(scene);
-  };
-}
+function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=String(text);return n;}function add(p,...c){c.filter(Boolean).forEach(x=>p.appendChild(x));return p;}
+function ensureStyles(){if(document.querySelector('link[data-ui2-lbr]'))return;const l=document.createElement('link');l.rel='stylesheet';l.href='./ui2LifeBetweenRaces.css';l.dataset.ui2Lbr='1';document.head.appendChild(l);}
+function familyLabel(f){return({training:'Training',recovery:'Recovery',maintenance:'Garage Prep',responsibility:'Life Responsibilities',prep:'Race Prep',relationship:'People & Life'})[f]??f;}
+function money(v){return Number(v)<=0?'FREE':`$${Number(v).toLocaleString()}`;}function usage(q){return `${q.usage.career} career · ${q.usage.recent} recent`;}
+function trainingScene(app){const game=app.game,root=el('section','lbr2-scene training2-scene');root.dataset.testid='training-scene';add(root,el('span','lbr2-kicker','TRAINING'),el('h2','','Choose the work, know the cost'));const intro=el('p','lbr2-context','Nothing happens until you confirm a session. Compare the money, time, load, repetition and access before committing.');root.appendChild(intro);const list=el('div','training2-list');
+ for(const q of availableTrainingSessions(game)){const card=el('button',`training2-card${q.allowed?'':' unavailable'}`);card.type='button';card.dataset.testid=`training-session-${q.trainingId}`;const cost=q.cost.support>0?`${money(q.cost.outOfPocket)} out of pocket · ${money(q.cost.retail)} retail`:money(q.cost.outOfPocket);add(card,el('strong','',q.label),el('span','training2-cost',cost),el('span','',`${q.time.slots} slot${q.time.slots===1?'':'s'} · load ${q.load} · ${usage(q)}`),el('span','',q.access?`${q.access.label}: ${q.access.remaining} left · ${q.access.source}`:q.supportSource?`Support: ${q.supportSource}`:'No pass or support applied'),el('small','',q.allowed?`${q.usage.band.replaceAll('-',' ')} · targets ${q.targets.slice(0,3).join(', ')}`:`UNAVAILABLE · ${q.reason.replaceAll('-',' ')}`));card.onclick=()=>showTrainingDetail(app,q.trainingId,root);list.appendChild(card);}root.appendChild(list);const back=el('button','training2-back','Back to week');back.type='button';back.onclick=()=>app.render();root.appendChild(back);return root;}
+function showTrainingDetail(app,id,root){const q=availableTrainingSessions(app.game).find(x=>x.trainingId===id);if(!q)return;root.innerHTML='';add(root,el('span','lbr2-kicker','SESSION PLAN'),el('h2','',q.label),el('p','lbr2-context',q.description));const facts=el('div','training2-detail');[['You pay',money(q.cost.outOfPocket)],['Retail',money(q.cost.retail)],['Time',`${q.time.slots} slot${q.time.slots===1?'':'s'}`],['Load / fatigue',`${q.load} / +${q.fatigue}`],['Used',usage(q)],['Returns',`${Math.round(q.diminishingFactor*100)}% current training value`],['Bike',q.bike.required?(q.bike.bike?.name??'Practice bike'):'No bike required'],['Access',q.access?`${q.access.label} · ${q.access.remaining} left`:q.supportSource??'Pay as you go']].forEach(([a,b])=>{const row=el('div','training2-fact');add(row,el('small','',a),el('strong','',b));facts.appendChild(row);});root.appendChild(facts);if(!q.allowed)root.appendChild(el('p','training2-warning',`Cannot start: ${q.reason.replaceAll('-',' ')}.`));const actions=el('div','training2-actions'),back=el('button','training2-back','Back to sessions'),start=el('button','training2-start',q.access?'Use Access & Start':'Start Session');back.type=start.type='button';back.onclick=()=>{root.replaceWith(trainingScene(app));};start.disabled=!q.allowed;start.dataset.testid='training-confirm';start.onclick=()=>{const result=takeLifeBetweenRacesDecision(app.game,'training',id);if(result.error){showTrainingDetail(app,id,root);return;}app.render();};add(actions,back,start);root.appendChild(actions);}
+function buildScene(app){const game=app.game;if(!game)return null;const opened=openLifeBetweenRaces(game);if(!opened?.period)return null;const choices=expandedLifeBetweenRacesChoices(game)??[],recommended=choices.find(c=>c.recommended)??choices[0],root=el('section','lbr2-scene');root.dataset.testid='life-between-races-scene';add(root,el('span','lbr2-kicker','BETWEEN RACES'),el('h2','',recommended?familyLabel(recommended.family):'This Week Matters'));const used=Number(opened.period.timeUsed??0),total=Number(opened.period.timeBudget??0);add(root,el('p','lbr2-context',`${Math.max(0,total-used)} of ${total} time slots left. Training, recovery, bike work, family, money, travel prep and people all compete for the same week.`));const list=el('div','lbr2-actions'),first=[],seen=new Set();for(const choice of choices){if(seen.has(choice.family))continue;seen.add(choice.family);first.push(choice);}first.slice(0,6).forEach(choice=>{const b=el('button',`lbr2-action${choice.recommended?' recommended':''}`);b.type='button';b.dataset.testid=`lbr-choice-${choice.family}`;add(b,el('small','',choice.recommended?'RECOMMENDED':'OPTION'),el('strong','',familyLabel(choice.family)),el('span','',choice.family==='training'?'Compare sessions, costs, repetition and access before you ride.':choice.description??choice.label??'Open this part of the week'));b.onclick=()=>{if(choice.family==='training'){root.replaceWith(trainingScene(app));return;}takeExpandedLifeBetweenRacesDecision(game,choice);app.render();};list.appendChild(b);});add(root,list);return root;}
+export function installUi2LifeBetweenRacesPatch(App){if(!App||App.prototype.__ui2LbrInstalled)return;App.prototype.__ui2LbrInstalled=true;ensureStyles();const prior=App.prototype.render;App.prototype.render=function renderLbr2(){prior.call(this);if(!this.game||!['garage','week'].includes(this.tab))return;const scene=buildScene(this);if(!scene)return;const host=this.root?.querySelector('.scroll-area');if(!host)return;host.querySelector('[data-testid="life-between-races-scene"], [data-testid="training-scene"]')?.remove();if(this.tab==='garage')host.prepend(scene);else host.append(scene);};}
