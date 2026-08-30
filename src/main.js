@@ -11,6 +11,7 @@ import { installUi2SeasonLifecyclePatch } from './ui2SeasonLifecyclePatch.js';
 import { installUi2CompletionPatch } from './ui2CompletionPatch.js';
 import { installUi2LifeBetweenRacesPatch } from './ui2LifeBetweenRacesPatch.js';
 import { installUi2RiderDevelopmentPatch } from './ui2RiderDevelopmentPatch.js';
+import { installUi2EquipmentPatch } from './ui2EquipmentPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -27,9 +28,10 @@ installUi2RaceWeekendPatch(App);
 installUi2SeasonLifecyclePatch(App);
 installUi2CompletionPatch(App);
 installUi2LifeBetweenRacesPatch(App);
-// Rider Development 2.0 (#401) adds narrative strengths, weaknesses and coaching
-// feedback to Career without making presentation the source of simulation truth.
 installUi2RiderDevelopmentPatch(App);
+// Equipment Lifecycle 2.0 (#457) layers real ownership/wear/value/support state into
+// Garage presentation; all simulation decisions remain in canonical equipment systems.
+installUi2EquipmentPatch(App);
 
 const ui2RenderTitle = App.prototype.renderTitle;
 App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
