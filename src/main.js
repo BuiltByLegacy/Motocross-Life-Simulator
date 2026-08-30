@@ -10,6 +10,7 @@ import { installUi2RaceWeekendPatch } from './ui2RaceWeekendPatch.js';
 import { installUi2SeasonLifecyclePatch } from './ui2SeasonLifecyclePatch.js';
 import { installUi2CompletionPatch } from './ui2CompletionPatch.js';
 import { installUi2LifeBetweenRacesPatch } from './ui2LifeBetweenRacesPatch.js';
+import { installUi2RiderDevelopmentPatch } from './ui2RiderDevelopmentPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -24,16 +25,12 @@ installUi2GaragePatch(App);
 installUi2CalendarPatch(App);
 installUi2RaceWeekendPatch(App);
 installUi2SeasonLifecyclePatch(App);
-// UI 2.0 completion wave (#355/#375-#380): Career becomes a record book,
-// World becomes the motocross ecosystem, and new-career setup becomes a
-// focused life-entry flow. Presentation only; simulation/domain state remains intact.
 installUi2CompletionPatch(App);
-// Life Between Races 2.0 (#394) layers one focused off-week scene over Garage/Calendar
-// without replacing the canonical calendar, sponsor, garage, or race systems.
 installUi2LifeBetweenRacesPatch(App);
+// Rider Development 2.0 (#401) adds narrative strengths, weaknesses and coaching
+// feedback to Career without making presentation the source of simulation truth.
+installUi2RiderDevelopmentPatch(App);
 
-// Preserve the established accessible-name contract used by save/reload flows
-// even though the visible UI 2.0 continuation card contains richer copy.
 const ui2RenderTitle = App.prototype.renderTitle;
 App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
   const result = ui2RenderTitle.apply(this, args);
@@ -42,34 +39,14 @@ App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
 };
 
 const diag = loadDiag();
-diag.install(window, {
-  persist: (entries) => { try { localStorage.setItem(DIAG_KEY, JSON.stringify(entries)); } catch (e) { /* storage may be unavailable */ } },
-});
-
+diag.install(window, {persist: (entries) => { try { localStorage.setItem(DIAG_KEY, JSON.stringify(entries)); } catch (e) {} }});
 const analytics = new Analytics({ consent: readConsent() });
-
 const root = document.getElementById('app');
 const app = new App(root, { diag, analytics });
 app.mount();
-
 window.__legacy = app;
 window.__diag = diag;
 window.__analytics = analytics;
 
-function loadDiag() {
-  try {
-    const raw = localStorage.getItem(DIAG_KEY);
-    return DiagnosticsLog.fromJSON(raw ? JSON.parse(raw) : []);
-  } catch (e) {
-    return new DiagnosticsLog();
-  }
-}
-
-function readConsent() {
-  try {
-    const raw = localStorage.getItem(CONSENT_KEY);
-    return raw == null ? true : raw === 'true';
-  } catch (e) {
-    return true;
-  }
-}
+function loadDiag() { try { const raw=localStorage.getItem(DIAG_KEY); return DiagnosticsLog.fromJSON(raw?JSON.parse(raw):[]); } catch(e){ return new DiagnosticsLog(); } }
+function readConsent() { try { const raw=localStorage.getItem(CONSENT_KEY); return raw==null?true:raw==='true'; } catch(e){ return true; } }
