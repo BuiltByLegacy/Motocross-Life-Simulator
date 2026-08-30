@@ -1,11 +1,13 @@
 import { migrateBikeOwnership, bikesByRole, garageBikePressure } from './equipmentOwnership.js';
 import { equipmentValuation } from './equipmentValuation.js';
-import { maintenanceStatus } from './equipmentWear.js';
+import { ensureMechanicalState, serviceThresholds } from './equipmentWear.js';
 
 const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,Number(v)||0));
 
-export function evaluateBikeSeasonDecision(bike,context={}){
-  const status=maintenanceStatus(bike);
+export function evaluateBikeSeasonDecision(bikeRaw,context={}){
+  const bike=ensureMechanicalState(bikeRaw),m=bike.mechanical,thresholds=serviceThresholds(bike);
+  const serviceDebt=Math.min(1,Math.max(0,m.serviceDebt/20));
+  const status={...thresholds,condition:m.condition,reliability:m.reliability,serviceDebt,band:thresholds.risk==='low'?'ready':thresholds.risk==='moderate'?'watch':'service-needed'};
   const value=equipmentValuation(bike,{currentYear:context.currentYear,marketDemand:context.marketDemand,regionalDemand:context.regionalDemand,provenance:context.provenance});
   const classEligible=context.classEligible!==false;
   const cash=Math.max(0,Number(context.cash)||0), rebuildCost=Math.max(0,Number(context.rebuildCost)||900), replacementCost=Math.max(0,Number(context.replacementCost)||Math.max(value.replacementEstimate,4500));
@@ -14,17 +16,18 @@ export function evaluateBikeSeasonDecision(bike,context={}){
   const options=[];
   const push=(id,score,reason,cost=0)=>options.push({id,score:Math.round(score),reason,cost,affordable:cost<=effectiveCash||debtTolerance>=70});
   if(classEligible){
-    push('keep-race',72+(status.band==='ready'?15:0)-(status.serviceDebt*18)-(seasonIntensity>75?8:0),'Keep the current bike as the race bike and accept its existing wear profile.');
-    push('move-practice',48+(status.serviceDebt<.4?8:0)+(seasonIntensity>65?12:0),'Move this bike to practice duty to protect a newer race bike.');
-    push('rebuild-keep',60+status.serviceDebt*28+(effectiveCash>=rebuildCost?10:-18),'Rebuild the existing bike and keep its known setup/history.',rebuildCost);
+    push('keep-race',72+(status.band==='ready'?15:0)-(serviceDebt*18)-(seasonIntensity>75?8:0),'Keep the current bike as the race bike and accept its existing wear profile.');
+    push('move-practice',48+(serviceDebt<.4?8:0)+(seasonIntensity>65?12:0),'Move this bike to practice duty to protect a newer race bike.');
+    push('rebuild-keep',60+serviceDebt*28+(effectiveCash>=rebuildCost?10:-18),'Rebuild the existing bike and keep its known setup/history.',rebuildCost);
   } else {
     push('replace',96,'The next class is not compatible with this bike, so replacement is effectively required.',replacementCost);
   }
-  if(classEligible) push('replace',50+(status.serviceDebt*.25*100)+(seasonIntensity>80?14:0)+(support>0?10:0)-(effectiveCash<replacementCost?24:0),'Replace with newer equipment for reliability and class/season fit.',replacementCost);
+  if(classEligible) push('replace',50+(serviceDebt*25)+(seasonIntensity>80?14:0)+(support>0?10:0)-(effectiveCash<replacementCost?24:0),'Replace with newer equipment for reliability and class/season fit.',replacementCost);
   push('sell-private',42+(value.privateExpected>rebuildCost?10:0)-(sentimental*.18),'Sell privately to maximize proceeds for the next season.');
   push('trade-dealer',38+(context.conveniencePriority??0)*.3,'Trade at a dealer for lower proceeds but immediate, simple turnover.');
   push('retire-display',25+sentimental*.7+(value.collectorEstimate>value.marketEstimate*1.15?15:0),'Preserve the bike because its history matters more than its liquid value.');
-  return {bikeId:bike.assetId??bike.id??null,status,value,classEligible,rebuildCost,replacementCost,effectiveCash,options:options.sort((a,b)=>b.score-a.score),recommendation:options.sort((a,b)=>b.score-a.score)[0]};
+  options.sort((a,b)=>b.score-a.score);
+  return {bikeId:bike.assetId??bike.id??null,status,value,classEligible,rebuildCost,replacementCost,effectiveCash,options,recommendation:options[0]};
 }
 
 export function seasonEquipmentPlan(ownershipRaw,context={}){
