@@ -11,6 +11,12 @@ test('legacy People/Economy migration preserves balance and deduplicates history
  const m=migratePeopleEconomyState(raw);assert.equal(m.careerEconomy.openingBalance,4200);assert.equal(m.careerEconomy.ledger.length,0);assert.equal(m.people2.supportHistory.length,1);assert.equal(m.relationships.dad.lifecycle.version,2);
 });
 
+test('pristine Economy 2.0 ledger anchors to post-background live cash exactly once',()=>{
+ const g=new Game({riderName:'Anchor Rider',seed:70,campaign:'parent',background:'working_class'});const liveCash=g.family.money;
+ ensurePeopleEconomyState(g);assert.equal(g.state.careerEconomy.openingBalance,liveCash);assert.equal(reconcilePeopleEconomy(g).ok,true);
+ const anchored=g.state.careerEconomy.openingBalance;g.family.money+=125;ensurePeopleEconomyState(g);assert.equal(g.state.careerEconomy.openingBalance,anchored);
+});
+
 test('multi-season relationship arc survives conflict help repair and role evolution',()=>{
  const g=new Game({riderName:'Arc Rider',seed:77,birthdate:'2012-05-15',campaign:'parent',background:'working_class'});ensurePeopleEconomyState(g);
  g.state.relationships.dad=createConflict(g.state.relationships.dad,{source:'money',severity:3,seasonNumber:1,week:5});
