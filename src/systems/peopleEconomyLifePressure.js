@@ -36,7 +36,7 @@ export function createConflict(recordRaw,{source='unknown',severity=2,seasonNumb
 export function repairConflict(recordRaw,{action='talk',effort=1,seasonNumber=1,week=0}={}){
   let rec=ensureRelationshipLifecycle(recordRaw),c=rec.lifecycle.activeConflict;if(!c||c.status!=='active')return rec;
   const value={talk:1,apology:2,show_up:2,follow_through:3,space:1}[action]??1;c={...c,repairProgress:Number(c.repairProgress||0)+Math.max(1,Number(effort||1))*value};
-  const needed=4+c.severity*2;rec=applyRelationshipChange(rec,{conflict:-value*4,trust:value*(action==='follow_through'?2:1),closeness:value},{seasonNumber,week,reason:`repair:${action}`,source:c.id});
+  const needed=3+c.severity;rec=applyRelationshipChange(rec,{conflict:-value*4,trust:value*(action==='follow_through'?2:1),closeness:value},{seasonNumber,week,reason:`repair:${action}`,source:c.id});
   if(c.repairProgress>=needed)c={...c,status:'repaired',closed:{seasonNumber,week}};rec.lifecycle.activeConflict=c;return rec;
 }
 export function driftRelationship(recordRaw,{weeks=4,seasonNumber=1,week=0}={}){const d=Math.max(0,Number(weeks||0))/4;return applyRelationshipChange(recordRaw,{closeness:-d,reliability:-d*.4,availability:-d*.5},{seasonNumber,week,reason:'passive-drift'});}
