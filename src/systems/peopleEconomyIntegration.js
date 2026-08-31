@@ -1,10 +1,24 @@
 import { ensurePeople2State, normalizeRelationships, recordSupportEvent } from './peopleRelationships2.js';
 import { createCareerEconomyState, recordCashChange, recordFundedExpense, reconcileEconomy } from './careerEconomy2.js';
 
+function pristineEconomy(raw){
+  const source=raw&&typeof raw==='object'?raw:{};
+  return (source.ledger?.length??0)===0&&(source.seenSourceIds?.length??0)===0&&(source.reconciliations?.length??0)===0;
+}
+
 export function ensurePeopleEconomyState(game){
   game.state.people2=ensurePeople2State(game.state.people2);
   game.state.relationships=normalizeRelationships(game.state.relationships);
-  game.state.careerEconomy=createCareerEconomyState(game.state.careerEconomy,game.family.money);
+  const raw=game.state.careerEconomy;
+  // The base career state is created before starting-background effects run. Until
+  // Economy 2.0 records its first source, the live family balance is therefore the
+  // authoritative opening balance. Anchor it once here, then never rewrite it after
+  // ledger/reconciliation activity exists.
+  if(pristineEconomy(raw)){
+    game.state.careerEconomy=createCareerEconomyState({...raw,openingBalance:Number(game.family.money??0)},game.family.money);
+  }else{
+    game.state.careerEconomy=createCareerEconomyState(raw,game.family.money);
+  }
   return game;
 }
 
