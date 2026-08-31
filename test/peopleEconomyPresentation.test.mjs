@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { personStory, peopleStory, fundingStory } from '../src/systems/peopleEconomyPresentation.js';
+import { createCareerEconomyState, recordEconomicEntry, recordFundedExpense } from '../src/systems/careerEconomy2.js';
+import { ensurePeople2State, recordSupportEvent } from '../src/systems/peopleRelationships2.js';
+import { createConflict } from '../src/systems/peopleEconomyLifePressure.js';
+
+test('person story reads conflict, sacrifice and history in plain language',()=>{let dad={id:'dad',name:'Dad',role:'Parent',values:{trust:72,support:76,pride:74}};dad=createConflict(dad,{source:'missed-race',severity:2,seasonNumber:2,week:8});let p=ensurePeople2State();const support=recordSupportEvent(p,{dad},{sourceId:'trip',actorId:'dad',kind:'travel-and-wrenching',money:250,time:8,labor:5,seasonNumber:2,week:4});const view=personStory(support.relationships.dad,support.state);assert.equal(view.state,'strained');assert.match(view.headline,/Missed Race/i);assert.match(view.supportLine,/\$250/);assert.ok(view.recentHistory.length);assert.ok(view.conversation.includes('apology'));});
+
+test('people story prioritizes strained relationships and summarizes real support',()=>{const relationships={friend:{id:'friend',name:'Friend',role:'Friend',values:{friendship:80,trust:75}},dad:createConflict({id:'dad',name:'Dad',role:'Parent',values:{trust:70,support:70}},{source:'money',severity:3})};const view=peopleStory(relationships,{supportHistory:[{actorId:'dad',money:100,time:3,labor:2,nonCashValue:0,seasonNumber:1,week:1}]});assert.equal(view.people[0].id,'dad');assert.match(view.headline,/attention/i);assert.equal(view.support.events,1);});
+
+test('funding story separates out of pocket from designated support',()=>{let s=createCareerEconomyState({},3000);s=recordEconomicEntry(s,{sourceId:'job',kind:'work-income',category:'work',cashDelta:400,fundingSource:'employer'}).state;s=recordFundedExpense(s,{sourceId:'race',category:'race-weekend',gross:1000,funding:[{source:'team',amount:700,type:'team-paid'},{source:'family',amount:300,type:'cash'}]}).state;const view=fundingStory(s,{cash:3100,seasonNumber:1,plannedCost:4000,monthlyLivingCost:1000,archetype:'supported_amateur'});assert.equal(view.outOfPocket,300);assert.equal(view.support,700);assert.equal(view.grossSpend,1000);assert.match(view.fundingLine,/\$700/);assert.ok(view.categories.length);assert.ok(view.sources.length);});
+
+test('funding story exposes pressure drivers without becoming rider-performance data',()=>{const view=fundingStory(null,{cash:600,seasonNumber:1,plannedCost:9000,debtExposure:6000,monthlyLivingCost:1500,equipmentRisk:70,familyStrain:60,archetype:'national_privateer'});assert.ok(['strained','critical'].includes(view.posture.band));assert.ok(view.posture.drivers.length);assert.equal('speed' in view,false);assert.equal('lapTime' in view,false);});
