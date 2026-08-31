@@ -13,6 +13,7 @@ import { installUi2CompletionPatch } from './ui2CompletionPatch.js';
 import { installUi2LifeBetweenRacesPatch } from './ui2LifeBetweenRacesPatch.js';
 import { installUi2RiderDevelopmentPatch } from './ui2RiderDevelopmentPatch.js';
 import { installUi2EquipmentPatch } from './ui2EquipmentPatch.js';
+import { installUi2CareerOpportunitiesPatch } from './ui2CareerOpportunitiesPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -31,9 +32,10 @@ installUi2SeasonLifecyclePatch(App);
 installUi2CompletionPatch(App);
 installUi2LifeBetweenRacesPatch(App);
 installUi2RiderDevelopmentPatch(App);
-// Equipment Lifecycle 2.0 (#457) layers real ownership/wear/value/support state into
-// Garage presentation; all simulation decisions remain in canonical equipment systems.
 installUi2EquipmentPatch(App);
+// Career Opportunities 2.0 (#385/#418) presents major forks and history in
+// Career while all eligibility/terms/AI rules remain in the canonical domain system.
+installUi2CareerOpportunitiesPatch(App);
 
 const ui2RenderTitle = App.prototype.renderTitle;
 App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
