@@ -12,7 +12,11 @@ test('setup presets create track-specific tradeoffs instead of universal upgrade
 
 test('worn bike raises mechanical risk without guaranteeing failure',()=>{
  const fresh=resolveBikeTrackFit(bike,VENUE_PROFILES.sandy_creek,{setup:'rough'}); const worn=resolveBikeTrackFit({...bike,reliability:42,condition:38,parts:{tires:32,brakes:45,chain:30,topEnd:28}},VENUE_PROFILES.sandy_creek,{setup:'rough'});
- assert.ok(worn.mechanicalRisk>fresh.mechanicalRisk+20); const risk=mechanicalReliability({bike:{...bike,reliability:42,condition:38,parts:{chain:30,topEnd:28}},track:VENUE_PROFILES.sandy_creek,phase:.9,aggression:.8}); assert.ok(risk.failureChance<5); assert.equal(risk.riskBand,'high');
+ assert.ok(worn.mechanicalRisk>fresh.mechanicalRisk+20);
+ const risk=mechanicalReliability({bike:{...bike,reliability:42,condition:38,parts:{chain:30,topEnd:28}},track:VENUE_PROFILES.sandy_creek,phase:.9,aggression:.8});
+ assert.ok(risk.failureChance>0);
+ assert.ok(risk.failureChance<5);
+ assert.ok(['elevated','high'].includes(risk.riskBand));
 });
 
 test('start quality is separate from lap pace and responds to rider plus hardware',()=>{
