@@ -14,6 +14,7 @@ import { installUi2LifeBetweenRacesPatch } from './ui2LifeBetweenRacesPatch.js';
 import { installUi2RiderDevelopmentPatch } from './ui2RiderDevelopmentPatch.js';
 import { installUi2EquipmentPatch } from './ui2EquipmentPatch.js';
 import { installUi2CareerOpportunitiesPatch } from './ui2CareerOpportunitiesPatch.js';
+import { installUi2PeopleEconomyPatch } from './ui2PeopleEconomyPatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -33,9 +34,10 @@ installUi2CompletionPatch(App);
 installUi2LifeBetweenRacesPatch(App);
 installUi2RiderDevelopmentPatch(App);
 installUi2EquipmentPatch(App);
-// Career Opportunities 2.0 (#385/#418) presents major forks and history in
-// Career while all eligibility/terms/AI rules remain in the canonical domain system.
 installUi2CareerOpportunitiesPatch(App);
+// People + Economy 2.0 (#495/#502) translates canonical relationship and
+// ledger/risk state into readable life-sim stories; simulation stays in systems.
+installUi2PeopleEconomyPatch(App);
 
 const ui2RenderTitle = App.prototype.renderTitle;
 App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
