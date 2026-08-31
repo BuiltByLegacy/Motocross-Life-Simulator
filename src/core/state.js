@@ -50,6 +50,8 @@ export function createInitialState(riderName = 'Riley', seed = Date.now(), birth
     bike: BIKE_FOR_CLASS(klass, startYear - 1),
     garage: { bikes: [], trophies: [], objects: [], parts: [] },
     relationships,
+    people2: { version: 2, supportHistory: [] },
+    careerEconomy: { version: 2, openingBalance: 1200, ledger: [], seenSourceIds: [], reconciliations: [] },
     memories: [],
     news: [],
     season: { results: [], points: 0, bestFinish: null },

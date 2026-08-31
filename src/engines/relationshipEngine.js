@@ -5,20 +5,19 @@
 // relationship record with clamped mutation and a `describe()` that turns
 // hidden numbers into a spoken line — the only thing the player ever sees.
 
+import { ensureRelationshipLifecycle } from '../systems/peopleRelationships2.js';
+
 function clamp(v) {
   return Math.max(0, Math.min(100, v));
 }
 
 export class Relationship {
   constructor(record) {
-    this.rec = record;
+    this.rec = ensureRelationshipLifecycle(record);
   }
-  get name() {
-    return this.rec.name;
-  }
-  get(dim) {
-    return this.rec.values[dim] ?? 0;
-  }
+  get name() { return this.rec.name; }
+  get lifecycle() { return this.rec.lifecycle; }
+  get(dim) { return this.rec.values[dim] ?? 0; }
   change(dim, delta) {
     if (this.rec.values[dim] === undefined) this.rec.values[dim] = 50;
     this.rec.values[dim] = clamp(this.rec.values[dim] + delta);
@@ -28,12 +27,9 @@ export class Relationship {
   // A rough single-number read of the bond, for arc progression / recap only.
   warmth() {
     const v = this.rec.values;
-    const pos =
-      (v.trust ?? 0) + (v.pride ?? 0) + (v.support ?? 0) + (v.belief ?? 0) +
-      (v.respect ?? 0) + (v.friendship ?? 0) + (v.loyalty ?? 0) + (v.reputation ?? 0);
+    const pos = (v.trust ?? 0) + (v.pride ?? 0) + (v.support ?? 0) + (v.belief ?? 0) + (v.respect ?? 0) + (v.friendship ?? 0) + (v.loyalty ?? 0) + (v.reputation ?? 0);
     const neg = (v.fear ?? 0) + (v.frustration ?? 0) + (v.rivalry ?? 0) + (v.jealousy ?? 0);
-    const posCount = ['trust', 'pride', 'support', 'belief', 'respect', 'friendship', 'loyalty', 'reputation']
-      .filter((k) => v[k] !== undefined).length;
+    const posCount = ['trust', 'pride', 'support', 'belief', 'respect', 'friendship', 'loyalty', 'reputation'].filter((k) => v[k] !== undefined).length;
     return posCount ? Math.round(pos / posCount - neg / 6) : 50;
   }
 
@@ -79,53 +75,35 @@ export class Relationship {
         if ((v.agreement ?? 0) > 62 && (v.strain ?? 0) < 30) return '"We\'re a good team, you and me."';
         if ((v.communication ?? 0) > 60) return '"Whatever you decide, we\'ll figure it out together."';
         return '"Just... keep them safe out there, okay?"';
-      default:
-        return '';
+      default: return '';
     }
   }
 
-  // Advance a named arc stage if the bond has grown enough.
   updateArc() {
     if (this.rec.arcStage === null || this.rec.arcStage === undefined) return null;
     const w = this.warmth();
-    const stages = { dad: 3, coach_mike: 3, rival_ethan: 3 };
     const target = w > 72 ? 2 : w > 55 ? 1 : 0;
-    if (target > this.rec.arcStage) {
-      this.rec.arcStage = target;
-      return this.rec.arcStage;
-    }
+    if (target > this.rec.arcStage) { this.rec.arcStage = target; return this.rec.arcStage; }
     return null;
   }
 }
 
-// A do-nothing relationship for ids not present in the current campaign.
 const NULL_RELATIONSHIP = {
   rec: { values: {}, role: null, arcStage: null },
-  get name() { return ''; },
-  get() { return 0; },
-  change() { return this; },
-  warmth() { return 50; },
-  describe() { return ''; },
-  updateArc() { return null; },
+  get name() { return ''; }, get lifecycle() { return null; }, get() { return 0; }, change() { return this; }, warmth() { return 50; }, describe() { return ''; }, updateArc() { return null; },
 };
 
 export class RelationshipEngine {
-  constructor(game) {
-    this.game = game;
-    this._cache = new Map();
-  }
+  constructor(game) { this.game = game; this._cache = new Map(); }
   of(id) {
     if (!this._cache.has(id)) {
       const rec = this.game.state.relationships[id];
-      // Some shared code references People that don't exist in the current
-      // campaign (e.g. a rider-mode scenario in Parent mode). Return a safe
-      // no-op relationship rather than crashing.
       if (!rec) return NULL_RELATIONSHIP;
-      this._cache.set(id, new Relationship(rec));
+      const normalized = ensureRelationshipLifecycle(rec);
+      this.game.state.relationships[id] = normalized;
+      this._cache.set(id, new Relationship(normalized));
     }
     return this._cache.get(id);
   }
-  all() {
-    return Object.keys(this.game.state.relationships).map((id) => this.of(id));
-  }
+  all() { return Object.keys(this.game.state.relationships).map((id) => this.of(id)); }
 }
