@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
-import { createConflict, repairConflict, evolveGuardianRole } from '../src/systems/peopleEconomyLifePressure.js';
+import { createConflict, repairConflict } from '../src/systems/peopleEconomyLifePressure.js';
+import { changeRelationshipRole } from '../src/systems/peopleRelationships2.js';
 import { ensurePeopleEconomyState, attributePersonSupport, payCareerExpense, receiveCareerMoney, reconcilePeopleEconomy } from '../src/systems/peopleEconomyIntegration.js';
 import { migratePeopleEconomyState, closeoutAudit, seasonViability, peopleArcSummary } from '../src/systems/peopleEconomyCloseout.js';
 
@@ -16,7 +17,7 @@ test('multi-season relationship arc survives conflict help repair and role evolu
  attributePersonSupport(g,{actorId:'dad',sourceId:'s1-dad-wrench',kind:'wrenching',time:6,labor:5,context:'Race weekend'});
  g.state.relationships.dad=repairConflict(g.state.relationships.dad,{action:'apology',seasonNumber:1,week:6});
  g.state.relationships.dad=repairConflict(g.state.relationships.dad,{action:'follow_through',seasonNumber:2,week:2});
- g.state.relationships.dad=evolveGuardianRole(g.state.relationships.dad,{age:18,responsibility:85,seasonNumber:3,week:1});
+ g.state.relationships.dad=changeRelationshipRole(g.state.relationships.dad,'Advisor',{seasonNumber:3,week:1,reason:'adult-independence'});
  const saved=g.toSave();const loaded=Game.load(structuredClone(saved));ensurePeopleEconomyState(loaded);
  const arc=peopleArcSummary(loaded.state.relationships).find(x=>x.id==='dad');assert.ok(arc.events>=2);assert.ok(arc.supportEvents>=1);assert.ok(arc.roleChanges>=1);assert.equal(loaded.state.people2.supportHistory.filter(x=>x.sourceId==='s1-dad-wrench').length,1);
 });
