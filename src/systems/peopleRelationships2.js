@@ -10,15 +10,16 @@ function infer(record,key,fallback=50){
 }
 
 export function ensureRelationshipLifecycle(recordRaw={}){
-  const record={...recordRaw,values:{...(recordRaw.values??{})},sharedMemories:[...(recordRaw.sharedMemories??[])]};
-  const old=recordRaw.lifecycle??{}; const dimensions={};
+  const source=recordRaw&&typeof recordRaw==='object'?recordRaw:{};
+  const record={...source,values:{...(source.values??{})},sharedMemories:[...(source.sharedMemories??[])]};
+  const old=source.lifecycle&&typeof source.lifecycle==='object'?source.lifecycle:{}; const dimensions={};
   for(const k of DIMS)dimensions[k]=clamp(old.dimensions?.[k]??infer(record,k,k==='conflict'?20:50));
-  record.lifecycle={version:PEOPLE_RELATIONSHIP_VERSION,role:old.role??record.role??'Person',roleHistory:[...(old.roleHistory??[])],dimensions,history:[...(old.history??[])],supportIds:[...(old.supportIds??[])],sacrifice:{money:Number(old.sacrifice?.money??0),time:Number(old.sacrifice?.time??0),labor:Number(old.sacrifice?.labor??0)},lastMeaningfulAt:old.lastMeaningfulAt??null};
+  record.lifecycle={...old,version:PEOPLE_RELATIONSHIP_VERSION,role:old.role??record.role??'Person',roleHistory:[...(old.roleHistory??[])],dimensions,history:[...(old.history??[])],supportIds:[...(old.supportIds??[])],sacrifice:{money:Number(old.sacrifice?.money??0),time:Number(old.sacrifice?.time??0),labor:Number(old.sacrifice?.labor??0)},lastMeaningfulAt:old.lastMeaningfulAt??null,activeConflict:old.activeConflict?{...old.activeConflict}:null};
   return record;
 }
 
 export function normalizeRelationships(relationships={}){const out={};for(const [id,rec] of Object.entries(relationships??{}))out[id]=ensureRelationshipLifecycle({...rec,id:rec.id??id});return out;}
-export function ensurePeople2State(raw={}){return{version:2,supportHistory:[...(raw.supportHistory??[])],seenSourceIds:[...(raw.seenSourceIds??[])]};}
+export function ensurePeople2State(raw={}){const source=raw&&typeof raw==='object'?raw:{};return{version:2,supportHistory:[...(source.supportHistory??[])],seenSourceIds:[...(source.seenSourceIds??[])]};}
 
 export function applyRelationshipChange(recordRaw,changes={},meta={}){
   const record=ensureRelationshipLifecycle(recordRaw);const before={...record.lifecycle.dimensions};
