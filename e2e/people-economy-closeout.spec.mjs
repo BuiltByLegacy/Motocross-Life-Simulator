@@ -1,0 +1,27 @@
+import { test, expect } from '@playwright/test';
+async function noOverflow(page){expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);}
+
+test('People + Economy 2.0 multi-season arc reconciles and survives reload',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');await page.waitForFunction(()=>!!window.__legacy);
+ const result=await page.evaluate(async()=>{
+  localStorage.clear();const a=window.__legacy;a.startGame({name:'Legacy Rider',depth:'detailed',birthdate:'2012-05-15',campaign:'parent',avatar:'🧒',background:'working_class'});
+  const life=await import(new URL('src/systems/peopleEconomyLifePressure.js',document.baseURI).href);const rels=await import(new URL('src/systems/peopleRelationships2.js',document.baseURI).href);const integ=await import(new URL('src/systems/peopleEconomyIntegration.js',document.baseURI).href);const close=await import(new URL('src/systems/peopleEconomyCloseout.js',document.baseURI).href);
+  integ.ensurePeopleEconomyState(a.game);const startingTalent=JSON.stringify(a.game.rider.skills);
+  a.game.state.relationships.dad=life.createConflict(a.game.state.relationships.dad,{source:'money',severity:3,seasonNumber:1,week:4});
+  integ.attributePersonSupport(a.game,{actorId:'dad',sourceId:'dad-s1-wrench',kind:'wrenching',time:7,labor:6,context:'Regional weekend'});
+  a.game.state.relationships.dad=life.repairConflict(a.game.state.relationships.dad,{action:'apology',seasonNumber:1,week:5});
+  const firstExpense=integ.payCareerExpense(a.game,1200,{sourceId:'s1-national-trip',category:'race-weekend',description:'National trip',funding:[{source:'sponsor',amount:800,type:'support'}]});
+  const before=close.seasonViability({cash:a.game.family.money,plannedOutOfPocket:a.game.family.money+600,reserve:250,requiredWeeks:4,availableWeeks:6});
+  integ.receiveCareerMoney(a.game,900,{sourceId:'s1-bike-sale',kind:'sale-proceeds',category:'equipment-sale',fundingSource:'buyer'});integ.receiveCareerMoney(a.game,300,{sourceId:'s1-work',kind:'work-income',category:'work',fundingSource:'employer'});
+  a.game.state.seasonNumber=2;a.game.state.week=2;a.game.state.relationships.dad=life.repairConflict(a.game.state.relationships.dad,{action:'follow_through',seasonNumber:2,week:2});a.game.state.relationships.dad=rels.changeRelationshipRole(a.game.state.relationships.dad,'Advisor',{seasonNumber:2,week:3,reason:'greater-independence'});
+  const secondExpense=integ.payCareerExpense(a.game,800,{sourceId:'s2-supported-trip',category:'race-weekend',description:'Supported regional',funding:[{source:'team',amount:550,type:'team-paid'}]});
+  const after=close.seasonViability({cash:a.game.family.money,plannedOutOfPocket:500,reserve:250,requiredWeeks:4,availableWeeks:6});const rec=integ.reconcilePeopleEconomy(a.game);const audit=close.closeoutAudit({relationships:a.game.state.relationships,people2:a.game.state.people2,careerEconomy:a.game.state.careerEconomy,currentBalance:a.game.family.money});
+  a.game.state.financialPosture={monthlyLivingCost:1000,debtExposure:500,equipmentRisk:25,familyStrain:25,archetype:'supported_amateur'};a.tab='stats';a.render();
+  return{before,after,expenseOk:firstExpense.ok&&secondExpense.ok,recOk:rec.ok,auditOk:audit.ok,talentUnchanged:startingTalent===JSON.stringify(a.game.rider.skills),money:a.game.family.money,role:a.game.state.relationships.dad.lifecycle.role,supportCount:a.game.state.people2.supportHistory.length,ledgerIds:a.game.state.careerEconomy.ledger.map(x=>x.sourceId)};
+ });
+ expect(result.before.viable).toBe(false);expect(result.after.viable).toBe(true);expect(result.expenseOk).toBe(true);expect(result.recOk).toBe(true);expect(result.auditOk).toBe(true);expect(result.talentUnchanged).toBe(true);expect(result.role).toBe('Advisor');expect(result.supportCount).toBeGreaterThan(0);expect(result.ledgerIds).toEqual(['s1-national-trip','s1-bike-sale','s1-work','s2-supported-trip']);
+ await expect(page.getByTestId('people-relationship-story')).toBeVisible();await expect(page.getByTestId('career-economy-story')).toBeVisible();await noOverflow(page);
+ await page.evaluate(()=>window.__legacy.saveGame());await page.reload();await page.waitForFunction(()=>!!window.__legacy);await page.evaluate(()=>window.__legacy.continueGame());await page.waitForFunction(()=>!!window.__legacy?.game?.state?.careerEconomy);
+ const restored=await page.evaluate(async()=>{const close=await import(new URL('src/systems/peopleEconomyCloseout.js',document.baseURI).href);const g=window.__legacy.game;const audit=close.closeoutAudit({relationships:g.state.relationships,people2:g.state.people2,careerEconomy:g.state.careerEconomy,currentBalance:g.family.money});return{auditOk:audit.ok,role:g.state.relationships.dad.lifecycle.role,supportIds:g.state.people2.supportHistory.map(x=>x.sourceId),ledgerIds:g.state.careerEconomy.ledger.map(x=>x.sourceId),money:g.family.money};});
+ expect(restored.auditOk).toBe(true);expect(restored.role).toBe('Advisor');expect(restored.supportIds.filter(x=>x==='dad-s1-wrench')).toHaveLength(1);expect(restored.ledgerIds.filter(x=>x==='s1-bike-sale')).toHaveLength(1);expect(restored.money).toBe(result.money);await noOverflow(page);
+});
