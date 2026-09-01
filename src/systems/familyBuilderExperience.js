@@ -22,10 +22,7 @@ const uniquePeople=(relationships,actors)=>{const out=normalizeRelationships(rel
 export function migrateLegacyFamilyBuilder(rawState={}){
   if(rawState.familyBuilder?.version>=2) return rawState;
   const legacyKey=String(rawState.background??'').toLowerCase().replaceAll('-','_').replaceAll(' ','_');
-  const mapped=LEGACY[legacyKey]??{
-    financial:'comfortable',motocrossKnowledge:'weekend',household:'two_parent',
-    school:rawState.schoolMode==='homeschool'?'homeschool':'public',supportModel:'family_diy',home:'basic'
-  };
+  const mapped=LEGACY[legacyKey]??{financial:'comfortable',motocrossKnowledge:'weekend',household:'two_parent',school:rawState.schoolMode==='homeschool'?'homeschool':'public',supportModel:'family_diy',home:'basic'};
   rawState.familyBuilder={version:2,initialized:false,migratedFrom:rawState.background??null,builder:createFamilyLifeBuilderState(mapped),support:createRacingSupportHomeState(mapped)};
   return rawState;
 }
@@ -41,11 +38,18 @@ export function initializeFamilyBuilder(game,builderRaw={},supportRaw={},opts={}
   const support=resolveRacingSupport(builder,supportState);
   const home=startingHomeCircumstances(builder,supportState);
   const school=schoolWeekConstraints(builder,{age:game.state.rider?.age??10,raceTravelDays:0});
+  const currentCash=Math.max(0,Number(game.state.family?.money??0));
+  const currentEconomy=game.state.careerEconomy;
 
   game.state.relationships=uniquePeople(game.state.relationships,[...start.people,...support.people]);
   game.state.people2=ensurePeople2State(game.state.people2);
-  game.state.family.money=start.economy.startingCash;
-  game.state.careerEconomy=createCareerEconomyState(null,start.economy.startingCash);
+  if(opts.preserveEconomy){
+    game.state.family.money=currentCash;
+    game.state.careerEconomy=createCareerEconomyState(currentEconomy,currentCash);
+  }else{
+    game.state.family.money=start.economy.startingCash;
+    game.state.careerEconomy=createCareerEconomyState(null,start.economy.startingCash);
+  }
   game.state.schoolMode=builder.school;
   game.state.familyBuilder={version:2,initialized:true,initializedAt:{seasonNumber:game.state.seasonNumber??1,week:game.state.week??1},migratedFrom:existing?.migratedFrom??null,builder,support:supportState};
   game.state.familyLife={version:2,school,support,home,opportunityContext:start.opportunityContext,equipmentExpectation:start.economy.equipmentExpectation};
@@ -58,7 +62,7 @@ export function ensureFamilyBuilderInitialized(game){
   if(!game?.state) return null;
   migrateLegacyFamilyBuilder(game.state);
   const fb=game.state.familyBuilder;
-  return initializeFamilyBuilder(game,fb.builder,fb.support,{baseCash:game.state.family?.money??1200});
+  return initializeFamilyBuilder(game,fb.builder,fb.support,{baseCash:1200,preserveEconomy:true});
 }
 
 export function familyStory(builderRaw={},supportRaw={},ctx={}){
