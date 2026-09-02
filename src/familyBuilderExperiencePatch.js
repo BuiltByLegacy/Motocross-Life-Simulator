@@ -19,6 +19,7 @@ export function installFamilyBuilderExperiencePatch(App){
   if(App.prototype.__familyBuilderExperienceInstalled)return;
   App.prototype.__familyBuilderExperienceInstalled=true;
   const originalRenderTitle=App.prototype.renderTitle;
+  const originalStart=App.prototype.startGame;
   const originalContinue=App.prototype.continueGame;
 
   App.prototype.renderTitle=function familyBuilderRenderTitle(...args){
@@ -47,6 +48,10 @@ export function installFamilyBuilderExperiencePatch(App){
   };
 
   App.prototype.startGame=function startGameWithFamilyBuilder(o){
+    // Existing browser tests and internal helpers call startGame directly with the
+    // legacy config shape. Preserve that contract; only the new onboarding flow
+    // owns Family Builder initialization.
+    if(!o?.family&&!o?.familySupport)return originalStart.call(this,o);
     this.clearSave();
     const cfg=ensureOnboard(o);
     this.game=new Game({riderName:cfg.name,depth:cfg.depth,birthdate:cfg.birthdate,campaign:cfg.campaign,avatar:cfg.avatar,background:null,seed:Date.now()});
