@@ -1,0 +1,21 @@
+name: Lemery policy inheritance
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  company-policy:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Lemery company-policy inheritance
+        run: |
+          files=""; [ -f AGENTS.md ] && files="$files AGENTS.md"; [ -f LEMERY.md ] && files="$files LEMERY.md"
+          [ -n "$files" ] || { echo "::warning::No company inheritance file found."; exit 1; }
+          grep -q "Lemery-Organization" $files || { echo "::warning::Canonical Lemery-Organization reference missing."; exit 1; }
+      - if: always()
+        run: echo "Warning-only rollout; this job does not block delivery."
