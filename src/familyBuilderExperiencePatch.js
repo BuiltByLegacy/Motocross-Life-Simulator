@@ -1,4 +1,5 @@
 import { Game, SIM_DEPTHS } from './game.js';
+import { householdTemplate } from './systems/familyLifeBuilder.js';
 import { familyStory, initializeFamilyBuilder, ensureFamilyBuilderInitialized } from './systems/familyBuilderExperience.js';
 
 const CHOICES={
@@ -34,7 +35,10 @@ export function installFamilyBuilderExperiencePatch(App){
 
     if(o.step==='family-finance')card=choiceCard('Where does your family stand financially?','Choose the family’s starting circumstances—not a difficulty level.',CHOICES.finance,o.family.financial,v=>o.family.financial=v,'identity','family-knowledge');
     else if(o.step==='family-knowledge')card=choiceCard('What does your family know about motocross?','Knowledge changes advice, wrenching confidence, and connections—not rider speed.',CHOICES.knowledge,o.family.motocrossKnowledge,v=>o.family.motocrossKnowledge=v,'family-finance','family-household');
-    else if(o.step==='family-household')card=choiceCard('Who are you growing up with?','This creates the persistent adults who will sacrifice, help, argue, wrench, travel, and grow with your career.',CHOICES.household,o.family.household,v=>o.family.household=v,'family-knowledge','family-school');
+    else if(o.step==='family-household'){
+      if(!Array.isArray(o.family.guardians)||!o.family.guardians.length)o.family.guardians=householdTemplate(o.family.household);
+      card=h('div',{class:'card','data-testid':'family-builder-family-household'},progress,h('h2',{},'Who are you growing up with?'),h('p',{class:'small faint'},'This creates the persistent adults who will sacrifice, help, argue, wrench, travel, and grow with your career.'),...CHOICES.household.map(([key,label,blurb])=>selectedButton(o,key,o.family.household,label,blurb,()=>{o.family.household=key;o.family.guardians=householdTemplate(key);this.renderTitle();})),h('div',{class:'field','data-testid':'family-guardian-customization'},h('label',{},'Guardian names'),h('div',{class:'tip'},'Optional. These names become the persistent people in your family story.'),...o.family.guardians.map((guardian,index)=>h('label',{class:'field'},h('span',{class:'small muted'},guardian.relation),h('input',{type:'text',value:guardian.name,'data-testid':`family-guardian-name-${index}`,oninput:e=>{guardian.name=e.target.value||guardian.relation;}})))),h('div',{class:'toolbar'},h('button',{class:'btn ghost',onclick:()=>go('family-knowledge')},'‹ Back'),h('button',{class:'btn primary',onclick:()=>go('family-school')},'Next ›')));
+    }
     else if(o.step==='family-school')card=choiceCard('What is school life like?','School changes time and travel pressure. Flexible school does not grant free skill.',CHOICES.school,o.family.school,v=>o.family.school=v,'family-household','family-support');
     else if(o.step==='family-support')card=choiceCard('How does your family keep you racing?','Choose how bike work and race-weekend support get done.',CHOICES.support,o.familySupport.supportModel,v=>o.familySupport.supportModel=v,'family-school','family-home');
     else if(o.step==='family-home')card=choiceCard('Where does the racing program live?','Your starting home controls storage, workspace, upkeep, and what can eventually be built.',CHOICES.home,o.familySupport.home,v=>o.familySupport.home=v,'family-support','family-review');
