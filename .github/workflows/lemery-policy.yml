@@ -1,21 +1,14 @@
 name: Lemery policy inheritance
+
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   company-policy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check Lemery company-policy inheritance
-        run: |
-          files=""; [ -f AGENTS.md ] && files="$files AGENTS.md"; [ -f LEMERY.md ] && files="$files LEMERY.md"
-          [ -n "$files" ] || { echo "::error::No company inheritance file found."; exit 1; }
-          grep -q "Lemery-Organization" $files || { echo "::error::Canonical Lemery-Organization reference missing."; exit 1; }
-          echo "Lemery company-policy inheritance declared in:$files"
-      - if: always()
-        run: echo "Company inheritance is a blocking baseline. Broader runtime drift remains advisory in Legacy OS."
+    uses: BuiltByLegacy/Lemery-Organization/.github/workflows/reusable-lemery-policy.yml@main
