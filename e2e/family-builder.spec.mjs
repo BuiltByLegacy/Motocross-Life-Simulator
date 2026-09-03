@@ -10,7 +10,7 @@ test('Build Your Family Life replaces archetype picker and survives reload on mo
 
   // Keep the proven campaign/identity setup, then enter the new life builder.
   await page.getByRole('button',{name:/rider/i}).click();
-  await page.getByRole('button',{name:'Next ›'}).click();
+  await page.getByRole('button',{name:'Choose family background →'}).click();
   await expect(page.getByTestId('family-builder-family-finance')).toBeVisible();
   await expect(page.getByText('Where does your family stand financially?')).toBeVisible();
   await expect(page.getByText('How do you start?')).toHaveCount(0);
