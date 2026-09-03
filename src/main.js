@@ -15,6 +15,7 @@ import { installUi2RiderDevelopmentPatch } from './ui2RiderDevelopmentPatch.js';
 import { installUi2EquipmentPatch } from './ui2EquipmentPatch.js';
 import { installUi2CareerOpportunitiesPatch } from './ui2CareerOpportunitiesPatch.js';
 import { installUi2PeopleEconomyPatch } from './ui2PeopleEconomyPatch.js';
+import { installFamilyBuilderExperiencePatch } from './familyBuilderExperiencePatch.js';
 import { DiagnosticsLog } from './systems/diagnostics.js';
 import { Analytics } from './systems/analytics.js';
 
@@ -38,6 +39,9 @@ installUi2CareerOpportunitiesPatch(App);
 // People + Economy 2.0 (#495/#502) translates canonical relationship and
 // ledger/risk state into readable life-sim stories; simulation stays in systems.
 installUi2PeopleEconomyPatch(App);
+// Family Life Builder (#517/#518/#519) replaces bundled background archetypes
+// with a composable, mobile-first life setup and canonical initialization.
+installFamilyBuilderExperiencePatch(App);
 
 const ui2RenderTitle = App.prototype.renderTitle;
 App.prototype.renderTitle = function renderTitleWithContinueContract(...args) {
