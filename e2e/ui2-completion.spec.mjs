@@ -14,8 +14,15 @@ test('new career onboarding enters the Season Brief on mobile', async ({ page })
   await page.getByTestId('ui2-start-rider').click();
   await page.getByTestId('ui2-rider-name').fill('Avery');
   await page.getByTestId('ui2-onboard-next-background').click();
-  await page.getByTestId('ui2-onboard-next-depth').click();
-  await page.getByTestId('ui2-begin-career').click();
+
+  // Family Builder replaces the old archetype/depth hop. Keep the default
+  // circumstances here; this test only verifies onboarding reaches Season Brief.
+  await expect(page.getByTestId('family-builder-family-finance')).toBeVisible();
+  for (let step = 0; step < 6; step += 1) {
+    await page.getByRole('button', { name: 'Next ›' }).click();
+  }
+  await page.getByTestId('family-story-continue').click();
+  await page.getByTestId('family-builder-begin').click();
 
   await expect(page.getByTestId('season-lifecycle-brief')).toBeVisible();
   await noOverflow(page);
