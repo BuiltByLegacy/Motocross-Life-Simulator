@@ -1,5 +1,5 @@
 import { ensureRelationshipLifecycle, applyRelationshipChange, changeRelationshipRole } from './peopleRelationships2.js';
-import { createCareerEconomyState, economySummary } from './careerEconomy2.js';
+import { createCareerEconomyState, economySummary, expectedBalance } from './careerEconomy2.js';
 import { seasonAffordability } from './peopleEconomyLifePressure.js';
 
 const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,Number(v)||0));
@@ -36,9 +36,9 @@ export function evolveRecurringRole(recordRaw,newRole,meta={}){const rec=changeR
 export function rivalryProfile(recordRaw){const rec=ensureRecurringBond(recordRaw),d=rec.lifecycle.dimensions;return{role:rec.lifecycle.role,rivalry:Math.round(clamp(d.conflict*.65+(100-d.closeness)*.2)),respect:Math.round(d.respect),friendship:Math.round(d.closeness),trusted:Math.round(d.trust)>=65,summary:d.respect>=65&&d.closeness>=55?'Competitive, but there is real respect and friendship underneath it.':d.respect>=65?'A serious rivalry with earned respect.':d.conflict>=60?'The relationship is tense and personal.':'A developing competitive relationship.'};}
 
 export function financialPosture(economyRaw,ctx={}){
-  const econ=createCareerEconomyState(economyRaw,ctx.cash??0),summary=economySummary(econ),cash=Math.max(0,Number(ctx.cash??0)+summary.netCash),planned=Math.max(0,Number(ctx.plannedCost??0));
+  const econ=createCareerEconomyState(economyRaw,ctx.cash??0),summary=economySummary(econ),cash=Math.max(0,ctx.cash==null?expectedBalance(econ):Number(ctx.cash||0)),planned=Math.max(0,Number(ctx.plannedCost??0));
   const debt=Math.max(0,Number(ctx.debtExposure??0)),monthlyLiving=Math.max(1,Number(ctx.monthlyLivingCost??800)),cushionMonths=cash/monthlyLiving;
-  const affordability=seasonAffordability(econ,{cash:Number(ctx.cash??0),plannedCost:planned,archetype:ctx.archetype??'budget_amateur',supportExpected:ctx.supportExpected??0});
+  const affordability=seasonAffordability(econ,{cash,plannedCost:planned,archetype:ctx.archetype??'budget_amateur',supportExpected:ctx.supportExpected??0});
   const equipmentRisk=clamp(ctx.equipmentRisk??0),familyStrain=clamp(ctx.familyStrain??0),commitments=clamp(ctx.commitmentRisk??0);
   const debtScore=clamp((debt/Math.max(500,monthlyLiving*4))*100),cushionRisk=clamp(75-cushionMonths*18);
   const score=clamp(affordability.pressureScore*.38+debtScore*.2+cushionRisk*.18+equipmentRisk*.1+familyStrain*.08+commitments*.06);
