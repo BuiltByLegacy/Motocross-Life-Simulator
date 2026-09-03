@@ -1,14 +1,26 @@
 name: Lemery policy inheritance
-
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   company-policy:
-    uses: BuiltByLegacy/Lemery-Organization/.github/workflows/reusable-lemery-policy.yml@main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Lemery company-policy inheritance
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=""
+          [ -f AGENTS.md ] && files="$files AGENTS.md"
+          [ -f LEMERY.md ] && files="$files LEMERY.md"
+          if [ -z "$files" ]; then echo "::error::No company inheritance file found."; exit 1; fi
+          grep -q "Lemery-Organization" $files || { echo "::error::Canonical Lemery-Organization reference missing."; exit 1; }
+          echo "Lemery company-policy inheritance declared in:$files"
+      - name: Reusable-workflow rollout status
+        if: always()
+        run: echo "Local fallback remains blocking until Lemery-Organization reusable-workflow access is enabled for private org repositories."
