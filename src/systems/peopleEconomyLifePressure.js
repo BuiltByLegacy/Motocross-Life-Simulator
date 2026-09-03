@@ -1,5 +1,5 @@
 import { ensureRelationshipLifecycle, applyRelationshipChange, changeRelationshipRole } from './peopleRelationships2.js';
-import { createCareerEconomyState, recordCashChange, economySummary } from './careerEconomy2.js';
+import { createCareerEconomyState, recordCashChange, economySummary, expectedBalance } from './careerEconomy2.js';
 
 const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,Number(v)||0));
 export const ECONOMIC_ARCHETYPES=Object.freeze({
@@ -21,10 +21,10 @@ export function classifyEconomicArchetype(ctx={}){
   return ECONOMIC_ARCHETYPES.budget_amateur;
 }
 
-export function seasonAffordability(economyRaw,{cash=0,plannedCost=0,archetype='budget_amateur',supportExpected=0}={}){
-  const econ=createCareerEconomyState(economyRaw,cash),summary=economySummary(econ),a=ECONOMIC_ARCHETYPES[archetype]??ECONOMIC_ARCHETYPES.budget_amateur;
+export function seasonAffordability(economyRaw,{cash=null,plannedCost=0,archetype='budget_amateur',supportExpected=0}={}){
+  const econ=createCareerEconomyState(economyRaw,cash??0),summary=economySummary(econ),a=ECONOMIC_ARCHETYPES[archetype]??ECONOMIC_ARCHETYPES.budget_amateur;
   const support=Math.max(0,Number(supportExpected)||Math.round(Number(plannedCost||0)*a.supportShare));
-  const oop=Math.max(0,Number(plannedCost||0)-support),available=Math.max(0,Number(cash||0)+summary.netCash),gap=oop-available;
+  const oop=Math.max(0,Number(plannedCost||0)-support),available=Math.max(0,cash==null?expectedBalance(econ):Number(cash||0)),gap=oop-available;
   const score=clamp(50+(gap/Math.max(100,plannedCost||1))*60+a.pressureBias);
   return{archetype:a.id,label:a.label,plannedCost:Number(plannedCost||0),expectedSupport:support,outOfPocket:oop,availableCash:available,gap:Math.round(gap),pressureScore:Math.round(score),band:score>=75?'critical':score>=55?'tight':score>=35?'managed':'comfortable',viable:gap<=0};
 }
