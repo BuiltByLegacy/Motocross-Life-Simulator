@@ -19,10 +19,36 @@ const LEGACY = Object.freeze({
 const titleCase=(s='')=>String(s).replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const uniquePeople=(relationships,actors)=>{const out=normalizeRelationships(relationships);for(const actor of actors??[])out[actor.id]=out[actor.id]??actor;return out;};
 
+function legacyGuardianSeeds(rawState={},mapped={}){
+  const relationships=Object.values(rawState.relationships??{});
+  const candidates=relationships.filter((person)=>{
+    const role=String(person?.lifecycle?.role??person?.role??'').toLowerCase();
+    const id=String(person?.id??'').toLowerCase();
+    return role.includes('parent')||role.includes('guardian')||role.includes('spouse')||['dad','mom','mother','father','spouse'].includes(id);
+  }).sort((a,b)=>{
+    const rank=(person)=>String(person?.lifecycle?.role??person?.role??'').toLowerCase().includes('spouse')?1:0;
+    return rank(a)-rank(b);
+  });
+  if(!candidates.length)return[];
+  const max=mapped.household==='single_parent'||mapped.household==='guardian_household'?1:2;
+  return candidates.slice(0,max).map((person,index)=>({
+    id:String(person.id),
+    name:String(person.name??(index===0?'Parent':'Parent 2')),
+    relation:String(person?.lifecycle?.role??person?.role??'').toLowerCase().includes('guardian')?'Guardian':'Parent',
+    roles:index===0
+      ?{attendsRaces:true,wrenches:true,financialSupport:true,emotionalSupport:true}
+      :{attendsRaces:true,travelSchool:true,financialSupport:true,emotionalSupport:true},
+    motocrossKnowledge:mapped.motocrossKnowledge,
+    availability:Number(person?.lifecycle?.dimensions?.availability??70),
+  }));
+}
+
 export function migrateLegacyFamilyBuilder(rawState={}){
   if(rawState.familyBuilder?.version>=2) return rawState;
   const legacyKey=String(rawState.background??'').toLowerCase().replaceAll('-','_').replaceAll(' ','_');
-  const mapped=LEGACY[legacyKey]??{financial:'comfortable',motocrossKnowledge:'weekend',household:'two_parent',school:rawState.schoolMode==='homeschool'?'homeschool':'public',supportModel:'family_diy',home:'basic'};
+  const mapped={...(LEGACY[legacyKey]??{financial:'comfortable',motocrossKnowledge:'weekend',household:'two_parent',school:rawState.schoolMode==='homeschool'?'homeschool':'public',supportModel:'family_diy',home:'basic'})};
+  const guardians=legacyGuardianSeeds(rawState,mapped);
+  if(guardians.length)mapped.guardians=guardians;
   rawState.familyBuilder={version:2,initialized:false,migratedFrom:rawState.background??null,builder:createFamilyLifeBuilderState(mapped),support:createRacingSupportHomeState(mapped)};
   return rawState;
 }
