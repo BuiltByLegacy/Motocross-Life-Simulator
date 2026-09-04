@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ensureRecurringBond,recordBondInteraction,bondOpportunity,recordBondIntroduction,evolveRecurringRole,rivalryProfile,financialPosture,evaluateCommitment } from '../src/systems/peopleEconomyBondsRisk.js';
 import { ensureRelationshipLifecycle } from '../src/systems/peopleRelationships2.js';
+import { createCareerEconomyState, recordCashChange } from '../src/systems/careerEconomy2.js';
 
 test('rivalry can build respect and friendship without erasing competition',()=>{let rival=ensureRecurringBond({id:'rival-1',role:'Rival',values:{rivalry:65,friendship:55,respect:60,trust:55}});rival=recordBondInteraction(rival,{kind:'race_battle',clean:true,intensity:4,seasonNumber:2,week:5,raceWeek:true});rival=recordBondInteraction(rival,{kind:'conversation',intensity:3,seasonNumber:2,week:6});const p=rivalryProfile(rival);assert.ok(p.respect>=60);assert.ok(p.friendship>=50);assert.ok(p.rivalry>0);assert.equal(rival.lifecycle.bond.encounters,2);});
 
@@ -10,6 +11,10 @@ test('mechanic and mentor history can originate specific introductions',()=>{let
 test('role evolution preserves relationship and bond history',()=>{let coach=ensureRecurringBond({id:'coach',role:'Coach',values:{trust:75,respect:80}});coach=recordBondInteraction(coach,{kind:'coaching',intensity:3,seasonNumber:2,week:3});coach=evolveRecurringRole(coach,'Mentor',{seasonNumber:4,week:1});assert.equal(coach.lifecycle.role,'Mentor');assert.equal(coach.lifecycle.roleHistory.length,1);assert.equal(coach.lifecycle.bond.encounters,1);});
 
 test('financial posture distinguishes stable program from debt and thin-cushion pressure',()=>{const stable=financialPosture(null,{cash:12000,plannedCost:5000,monthlyLivingCost:1200,debtExposure:0,archetype:'supported_amateur',equipmentRisk:10});const strained=financialPosture(null,{cash:900,plannedCost:9000,monthlyLivingCost:1600,debtExposure:7000,archetype:'national_privateer',equipmentRisk:75,familyStrain:65});assert.equal(stable.band,'stable');assert.ok(['strained','critical'].includes(strained.band));assert.ok(strained.pressureScore>stable.pressureScore+30);assert.ok(strained.drivers.length);});
+
+test('financial posture treats supplied family cash as the current reconciled balance',()=>{let economy=createCareerEconomyState(null,1200);economy=recordCashChange(economy,-400,{sourceId:'s1-equipment',seasonNumber:1,week:2,kind:'expense',category:'equipment'},1200).state;const posture=financialPosture(economy,{cash:800,plannedCost:0,monthlyLivingCost:800,archetype:'budget_amateur'});assert.equal(posture.cash,800);assert.equal(posture.cushionMonths,1);assert.equal(posture.affordability.availableCash,800);});
+
+test('financial posture can derive current balance from the canonical ledger when live cash is omitted',()=>{let economy=createCareerEconomyState(null,1200);economy=recordCashChange(economy,-400,{sourceId:'s1-equipment',seasonNumber:1,week:2,kind:'expense',category:'equipment'},1200).state;const posture=financialPosture(economy,{plannedCost:0,monthlyLivingCost:800,archetype:'budget_amateur'});assert.equal(posture.cash,800);assert.equal(posture.affordability.availableCash,800);});
 
 test('risk posture changes viable commitments but never rider speed',()=>{const posture=financialPosture(null,{cash:1800,plannedCost:7000,monthlyLivingCost:1200,debtExposure:3000,archetype:'regional_privateer'});const decision=evaluateCommitment(posture,{cost:1400,reserveRequired:700,risk:70});assert.equal(decision.allowed,false);assert.ok(decision.reason);assert.equal('speed' in posture,false);});
 
