@@ -6,21 +6,21 @@ test('People + Economy 2.0 multi-season arc reconciles through canonical rollove
  const result=await page.evaluate(async()=>{
   localStorage.clear();const a=window.__legacy;a.startGame({name:'Legacy Rider',depth:'detailed',birthdate:'2012-05-15',campaign:'parent',avatar:'🧒',background:'working_class'});
   const life=await import(new URL('src/systems/peopleEconomyLifePressure.js',document.baseURI).href);const rels=await import(new URL('src/systems/peopleRelationships2.js',document.baseURI).href);const integ=await import(new URL('src/systems/peopleEconomyIntegration.js',document.baseURI).href);const close=await import(new URL('src/systems/peopleEconomyCloseout.js',document.baseURI).href);
-  integ.ensurePeopleEconomyState(a.game);const startingTalent=JSON.stringify(a.game.rider.skills);const startingPeopleIds=Object.keys(a.game.state.relationships).sort();
+  integ.ensurePeopleEconomyState(a.game);const startingTalent=JSON.stringify(a.game.rider.skills);
   a.game.state.relationships.dad=life.createConflict(a.game.state.relationships.dad,{source:'money',severity:3,seasonNumber:1,week:4});
   integ.attributePersonSupport(a.game,{actorId:'dad',sourceId:'dad-s1-wrench',kind:'wrenching',time:7,labor:6,context:'Regional weekend'});
   a.game.state.relationships.dad=life.repairConflict(a.game.state.relationships.dad,{action:'apology',seasonNumber:1,week:5});
   const firstExpense=integ.payCareerExpense(a.game,1200,{sourceId:'s1-national-trip',category:'race-weekend',description:'National trip',funding:[{source:'sponsor',amount:800,type:'support'}]});
   const before=close.seasonViability({cash:a.game.family.money,plannedOutOfPocket:a.game.family.money+600,reserve:250,requiredWeeks:4,availableWeeks:6});
   integ.receiveCareerMoney(a.game,900,{sourceId:'s1-bike-sale',kind:'sale-proceeds',category:'equipment-sale',fundingSource:'buyer'});integ.receiveCareerMoney(a.game,300,{sourceId:'s1-work',kind:'work-income',category:'work',fundingSource:'employer'});
-  const economicTalentUnchanged=startingTalent===JSON.stringify(a.game.rider.skills);const preRolloverSupport=a.game.state.people2.supportHistory.length;const preRolloverLedger=a.game.state.careerEconomy.ledger.map(x=>x.sourceId);
+  const economicTalentUnchanged=startingTalent===JSON.stringify(a.game.rider.skills);const preRolloverPeopleIds=Object.keys(a.game.state.relationships).sort();const preRolloverSupport=a.game.state.people2.supportHistory.length;const preRolloverLedger=a.game.state.careerEconomy.ledger.map(x=>x.sourceId);
   a.game.startNextSeason();
   const rolloverPeopleIds=Object.keys(a.game.state.relationships).sort();const canonicalRollover=a.game.state.seasonNumber===2&&a.game.state.week===1&&a.game.state.careerHistory.length===1;const supportPersisted=a.game.state.people2.supportHistory.length===preRolloverSupport;const ledgerPersisted=JSON.stringify(a.game.state.careerEconomy.ledger.map(x=>x.sourceId))===JSON.stringify(preRolloverLedger);const conflictPersisted=a.game.state.relationships.dad.lifecycle.activeConflict?.status==='active';
   a.game.state.week=2;a.game.state.relationships.dad=life.repairConflict(a.game.state.relationships.dad,{action:'follow_through',seasonNumber:2,week:2});a.game.state.relationships.dad=rels.changeRelationshipRole(a.game.state.relationships.dad,'Advisor',{seasonNumber:2,week:3,reason:'greater-independence'});
   const secondExpense=integ.payCareerExpense(a.game,800,{sourceId:'s2-supported-trip',category:'race-weekend',description:'Supported regional',funding:[{source:'team',amount:550,type:'team-paid'}]});
   const after=close.seasonViability({cash:a.game.family.money,plannedOutOfPocket:500,reserve:250,requiredWeeks:4,availableWeeks:6});const rec=integ.reconcilePeopleEconomy(a.game);const audit=close.closeoutAudit({relationships:a.game.state.relationships,people2:a.game.state.people2,careerEconomy:a.game.state.careerEconomy,currentBalance:a.game.family.money});
   a.game.state.financialPosture={monthlyLivingCost:1000,debtExposure:500,equipmentRisk:25,familyStrain:25,archetype:'supported_amateur'};a.tab='stats';a.render();
-  return{before,after,expenseOk:firstExpense.ok&&secondExpense.ok,recOk:rec.ok,auditOk:audit.ok,economicTalentUnchanged,canonicalRollover,supportPersisted,ledgerPersisted,conflictPersisted,startingPeopleIds,rolloverPeopleIds,money:a.game.family.money,role:a.game.state.relationships.dad.lifecycle.role,supportCount:a.game.state.people2.supportHistory.length,ledgerIds:a.game.state.careerEconomy.ledger.map(x=>x.sourceId),peopleIds:Object.keys(a.game.state.relationships).sort()};
+  return{before,after,expenseOk:firstExpense.ok&&secondExpense.ok,recOk:rec.ok,auditOk:audit.ok,economicTalentUnchanged,canonicalRollover,supportPersisted,ledgerPersisted,conflictPersisted,preRolloverPeopleIds,rolloverPeopleIds,money:a.game.family.money,role:a.game.state.relationships.dad.lifecycle.role,supportCount:a.game.state.people2.supportHistory.length,ledgerIds:a.game.state.careerEconomy.ledger.map(x=>x.sourceId),peopleIds:Object.keys(a.game.state.relationships).sort()};
  });
  expect(result.before.viable).toBe(false);
  expect(result.after.viable).toBe(true);
@@ -29,7 +29,7 @@ test('People + Economy 2.0 multi-season arc reconciles through canonical rollove
  expect(result.auditOk).toBe(true);
  expect(result.economicTalentUnchanged).toBe(true);
  expect(result.canonicalRollover).toBe(true);
- expect(result.rolloverPeopleIds).toEqual(result.startingPeopleIds);
+ expect(result.rolloverPeopleIds).toEqual(result.preRolloverPeopleIds);
  expect(result.supportPersisted).toBe(true);
  expect(result.ledgerPersisted).toBe(true);
  expect(result.conflictPersisted).toBe(true);
